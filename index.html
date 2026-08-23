@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Vendas e Estoque</title>
-    <!-- Tailwind CSS para estilização rápida e moderna -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -18,7 +18,7 @@
     <!-- Conteúdo Principal -->
     <main class="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        <!-- Cards de Resumo / Faturamento -->
+        <!-- Cards de Resumo -->
         <div class="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
                 <p class="text-gray-500 text-sm">Faturamento Total</p>
@@ -34,7 +34,7 @@
             </div>
         </div>
 
-        <!-- Formulário de Cadastro / Entrada -->
+        <!-- Formulário de Cadastro -->
         <div class="bg-white p-6 rounded-lg shadow md:col-span-1">
             <h2 class="text-lg font-bold mb-4 text-gray-700">Cadastrar Produto</h2>
             <form id="productForm" class="space-y-4">
@@ -54,7 +54,7 @@
             </form>
         </div>
 
-        <!-- Tabela de Estoque e Vendas -->
+        <!-- Tabela de Estoque -->
         <div class="bg-white p-6 rounded-lg shadow md:col-span-2">
             <h2 class="text-lg font-bold mb-4 text-gray-700">Controle de Estoque</h2>
             <div class="overflow-x-auto">
@@ -68,10 +68,7 @@
                         </tr>
                     </thead>
                     <tbody id="stockTableBody" class="text-sm text-gray-700">
-                        <!-- Os produtos entram aqui dinamicamente via JS -->
-                        <tr>
-                            <td colspan="4" class="p-4 text-center text-gray-400">Nenhum produto cadastrado ainda.</td>
-                        </tr>
+                        <!-- Dinâmico via JS -->
                     </tbody>
                 </table>
             </div>
@@ -79,31 +76,33 @@
 
     </main>
 
-    <!-- Script de lógica básica (Entrada e Listagem) -->
+    <!-- Script com Lógica, Faturamento e LocalStorage -->
     <script>
-        let products = [];
+        // Recupera dados do localStorage ou inicia vazios
+        let products = JSON.parse(localStorage.getItem('products')) || [];
+        let sales = JSON.parse(localStorage.getItem('sales')) || [];
 
         const form = document.getElementById('productForm');
         const tableBody = document.getElementById('stockTableBody');
-        const totalProductsEl = document.getElementById('totalProdutos');
+        const totalProdutosEl = document.getElementById('totalProdutos');
+        const totalVendasEl = document.getElementById('totalVendas');
+        const totalFaturamentoEl = document.getElementById('totalFaturamento');
 
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            const name = document.getElementById('prodName').value;
-            const price = parseFloat(document.getElementById('prodPrice').value);
-            const qty = parseInt(document.getElementById('prodQty').value);
+        // Salvar dados no LocalStorage
+        function saveData() {
+            localStorage.setItem('products', JSON.stringify(products));
+            localStorage.setItem('sales', JSON.stringify(sales));
+        }
 
-            const newProduct = { id: Date.now(), name, price, qty };
-            products.push(newProduct);
-
-            updateUI();
-            form.reset();
-        });
-
+        // Atualizar interface
         function updateUI() {
             tableBody.innerHTML = '';
-            totalProductsEl.textContent = products.length;
+            totalProdutosEl.textContent = products.length;
+            totalVendasEl.textContent = sales.length;
+
+            // Calcular Faturamento Total
+            const totalFaturamento = sales.reduce((acc, sale) => acc + sale.total, 0);
+            totalFaturamentoEl.textContent = `R$ ${totalFaturamento.toFixed(2).replace('.', ',')}`;
 
             if (products.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">Nenhum produto cadastrado ainda.</td></tr>`;
@@ -115,26 +114,63 @@
                 row.className = "border-b hover:bg-gray-50";
                 row.innerHTML = `
                     <td class="p-3 font-medium">${p.name}</td>
-                    <td class="p-3">R$ ${p.price.toFixed(2)}</td>
-                    <td class="p-3">${p.qty} un</td>
+                    <td class="p-3">R$ ${p.price.toFixed(2).replace('.', ',')}</td>
+                    <td class="p-3 ${p.qty === 0 ? 'text-red-500 font-bold' : ''}">${p.qty} un</td>
                     <td class="p-3 flex gap-2">
-                        <button onclick="sellProduct(${p.id})" class="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600">Vender</button>
+                        <button onclick="sellProduct(${p.id})" class="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition ${p.qty === 0 ? 'opacity-50 cursor-not-allowed' : ''}">Vender</button>
+                        <button onclick="deleteProduct(${p.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition">Excluir</button>
                     </td>
                 `;
                 tableBody.appendChild(row);
             });
         }
 
+        // Cadastrar Produto
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('prodName').value;
+            const price = parseFloat(document.getElementById('prodPrice').value);
+            const qty = parseInt(document.getElementById('prodQty').value);
+
+            const newProduct = { id: Date.now(), name, price, qty };
+            products.push(newProduct);
+
+            saveData();
+            updateUI();
+            form.reset();
+        });
+
+        // Registrar Venda (Saída de Estoque)
         function sellProduct(id) {
             const product = products.find(p => p.id === id);
             if (product && product.qty > 0) {
                 product.qty -= 1;
-                // Atualizar faturamento futuramente aqui
+
+                // Adiciona ao registro de vendas
+                sales.push({
+                    productId: product.id,
+                    name: product.name,
+                    total: product.price,
+                    date: new Date().toLocaleDateString('pt-BR')
+                });
+
+                saveData();
                 updateUI();
             } else {
                 alert('Estoque esgotado!');
             }
         }
+
+        // Excluir Produto
+        function deleteProduct(id) {
+            products = products.filter(p => p.id !== id);
+            saveData();
+            updateUI();
+        }
+
+        // Executa ao carregar a página
+        updateUI();
     </script>
 </body>
 </html>
