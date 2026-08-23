@@ -62,7 +62,7 @@
                     <thead>
                         <tr class="bg-gray-50 border-b text-gray-600 text-sm">
                             <th class="p-3">Produto</th>
-                            <th class="p-3">Preço</th>
+                            <th class="p-3">Preço Unitário</th>
                             <th class="p-3">Estoque</th>
                             <th class="p-3">Ações</th>
                         </tr>
@@ -74,87 +74,118 @@
             </div>
         </div>
 
+        <!-- Nova Seção: Histórico Detalhado de Vendas -->
+        <div class="bg-white p-6 rounded-lg shadow md:col-span-3">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-gray-700">Histórico Detalhado de Vendas</h2>
+                <button onclick="clearSalesHistory()" class="bg-gray-200 text-gray-700 px-3 py-1 rounded text-xs hover:bg-gray-300 transition">Limpar Histórico</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 border-b text-gray-600 text-sm">
+                            <th class="p-3">ID da Venda</th>
+                            <th class="p-3">Produto</th>
+                            <th class="p-3">Valor Pago</th>
+                            <th class="p-3">Data da Venda</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesTableBody" class="text-sm text-gray-700">
+                        <!-- Dinâmico via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </main>
 
-    <!-- Script com Lógica, Faturamento e LocalStorage -->
+    <!-- Script com Lógica, Faturamento, LocalStorage e Histórico -->
     <script>
-        // Recupera dados do localStorage ou inicia vazios
         let products = JSON.parse(localStorage.getItem('products')) || [];
         let sales = JSON.parse(localStorage.getItem('sales')) || [];
 
         const form = document.getElementById('productForm');
         const tableBody = document.getElementById('stockTableBody');
+        const salesTableBody = document.getElementById('salesTableBody');
         const totalProdutosEl = document.getElementById('totalProdutos');
         const totalVendasEl = document.getElementById('totalVendas');
         const totalFaturamentoEl = document.getElementById('totalFaturamento');
 
-        // Salvar dados no LocalStorage
         function saveData() {
             localStorage.setItem('products', JSON.stringify(products));
             localStorage.setItem('sales', JSON.stringify(sales));
         }
 
-        // Atualizar interface
         function updateUI() {
+            // Atualiza Estoque
             tableBody.innerHTML = '';
             totalProdutosEl.textContent = products.length;
             totalVendasEl.textContent = sales.length;
 
-            // Calcular Faturamento Total
             const totalFaturamento = sales.reduce((acc, sale) => acc + sale.total, 0);
             totalFaturamentoEl.textContent = `R$ ${totalFaturamento.toFixed(2).replace('.', ',')}`;
 
             if (products.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">Nenhum produto cadastrado ainda.</td></tr>`;
-                return;
+            } else {
+                products.forEach(p => {
+                    const row = document.createElement('tr');
+                    row.className = "border-b hover:bg-gray-50";
+                    row.innerHTML = `
+                        <td class="p-3 font-medium">${p.name}</td>
+                        <td class="p-3">R$ ${p.price.toFixed(2).replace('.', ',')}</td>
+                        <td class="p-3 ${p.qty === 0 ? 'text-red-500 font-bold' : ''}">${p.qty} un</td>
+                        <td class="p-3 flex gap-2">
+                            <button onclick="sellProduct(${p.id})" class="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition ${p.qty === 0 ? 'opacity-50 cursor-not-allowed' : ''}">Vender</button>
+                            <button onclick="deleteProduct(${p.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition">Excluir</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
             }
 
-            products.forEach(p => {
-                const row = document.createElement('tr');
-                row.className = "border-b hover:bg-gray-50";
-                row.innerHTML = `
-                    <td class="p-3 font-medium">${p.name}</td>
-                    <td class="p-3">R$ ${p.price.toFixed(2).replace('.', ',')}</td>
-                    <td class="p-3 ${p.qty === 0 ? 'text-red-500 font-bold' : ''}">${p.qty} un</td>
-                    <td class="p-3 flex gap-2">
-                        <button onclick="sellProduct(${p.id})" class="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition ${p.qty === 0 ? 'opacity-50 cursor-not-allowed' : ''}">Vender</button>
-                        <button onclick="deleteProduct(${p.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition">Excluir</button>
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            });
+            // Atualiza Histórico de Vendas
+            salesTableBody.innerHTML = '';
+            if (sales.length === 0) {
+                salesTableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">Nenhuma venda registrada ainda.</td></tr>`;
+            } else {
+                // Mostra as vendas da mais recente para a mais antiga (.slice().reverse())
+                sales.slice().reverse().forEach((s, index) => {
+                    const row = document.createElement('tr');
+                    row.className = "border-b hover:bg-gray-50";
+                    row.innerHTML = `
+                        <td class="p-3 text-gray-500 text-xs">#${sales.length - index}</td>
+                        <td class="p-3 font-medium">${s.name}</td>
+                        <td class="p-3 text-green-600 font-semibold">R$ ${s.total.toFixed(2).replace('.', ',')}</td>
+                        <td class="p-3 text-gray-500">${s.date}</td>
+                    `;
+                    salesTableBody.appendChild(row);
+                });
+            }
         }
 
-        // Cadastrar Produto
         form.addEventListener('submit', (e) => {
             e.preventDefault();
-            
             const name = document.getElementById('prodName').value;
             const price = parseFloat(document.getElementById('prodPrice').value);
             const qty = parseInt(document.getElementById('prodQty').value);
 
-            const newProduct = { id: Date.now(), name, price, qty };
-            products.push(newProduct);
-
+            products.push({ id: Date.now(), name, price, qty });
             saveData();
             updateUI();
             form.reset();
         });
 
-        // Registrar Venda (Saída de Estoque)
         function sellProduct(id) {
             const product = products.find(p => p.id === id);
             if (product && product.qty > 0) {
                 product.qty -= 1;
-
-                // Adiciona ao registro de vendas
                 sales.push({
                     productId: product.id,
                     name: product.name,
                     total: product.price,
-                    date: new Date().toLocaleDateString('pt-BR')
+                    date: new Date().toLocaleString('pt-BR')
                 });
-
                 saveData();
                 updateUI();
             } else {
@@ -162,14 +193,20 @@
             }
         }
 
-        // Excluir Produto
         function deleteProduct(id) {
             products = products.filter(p => p.id !== id);
             saveData();
             updateUI();
         }
 
-        // Executa ao carregar a página
+        function clearSalesHistory() {
+            if (confirm('Deseja realmente limpar o histórico de vendas e zerar o faturamento?')) {
+                sales = [];
+                saveData();
+                updateUI();
+            }
+        }
+
         updateUI();
     </script>
 </body>
