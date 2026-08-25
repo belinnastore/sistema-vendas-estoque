@@ -96,7 +96,6 @@
                 
                 <!-- Filtros e Ações de Vendas -->
                 <div class="flex flex-wrap items-center gap-2">
-                    <!-- Botões de Filtro -->
                     <div class="inline-flex rounded-md shadow-sm" role="group">
                         <button type="button" onclick="setSalesFilter('Todas')" id="filterBtnTodas" class="px-3 py-1.5 text-xs font-medium rounded-l-lg bg-blue-600 text-white transition">Todas</button>
                         <button type="button" onclick="setSalesFilter('Pendente')" id="filterBtnPendente" class="px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border-t border-b border-gray-200 hover:bg-gray-100 transition">Pendentes</button>
@@ -132,7 +131,7 @@
 
     </main>
 
-    <!-- Modal de Venda Múltipla (Carrinho / Nova ou Edição) -->
+    <!-- Modal de Venda Múltipla -->
     <div id="multiSaleModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4">
         <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 class="text-xl font-bold mb-4 text-gray-800" id="modalSaleTitle">Nova Venda (Carrinho de Compras)</h2>
@@ -144,7 +143,6 @@
                 <input type="text" id="multiClientName" required placeholder="Ex: Zé Maria" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
             </div>
 
-            <!-- Adicionar item ao carrinho com Pesquisa -->
             <div class="bg-gray-50 p-4 rounded border mb-4 space-y-3">
                 <h3 class="font-semibold text-sm text-gray-700">Adicionar Produto ao Carrinho</h3>
                 
@@ -168,7 +166,6 @@
                 <button type="button" onclick="addItemToCart()" class="w-full bg-blue-500 text-white py-2 rounded text-sm hover:bg-blue-600 transition">Adicionar à Lista da Compra</button>
             </div>
 
-            <!-- Tabela do Carrinho Atual -->
             <div class="mb-4">
                 <h3 class="font-semibold text-sm text-gray-700 mb-2">Itens Selecionados para esta Compra:</h3>
                 <div class="overflow-x-auto border rounded">
@@ -212,7 +209,7 @@
         let products = JSON.parse(localStorage.getItem('products')) || [];
         let sales = JSON.parse(localStorage.getItem('sales')) || [];
         let currentCart = [];
-        let currentSalesFilter = 'Todas'; // 'Todas', 'Pendente', 'Pago'
+        let currentSalesFilter = 'Todas';
 
         const productForm = document.getElementById('productForm');
         const tableBody = document.getElementById('stockTableBody');
@@ -234,8 +231,6 @@
 
         function setSalesFilter(filter) {
             currentSalesFilter = filter;
-            
-            // Atualizar estilo dos botões de filtro
             ['Todas', 'Pendente', 'Pago'].forEach(f => {
                 const btn = document.getElementById(`filterBtn${f}`);
                 if (f === filter) {
@@ -244,18 +239,6 @@
                     btn.className = "px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 transition";
                 }
             });
-
-            if (filter === 'Todas') {
-                document.getElementById('filterBtnTodas').classList.add('rounded-l-lg');
-                document.getElementById('filterBtnPago').classList.remove('rounded-r-lg');
-            } else if (filter === 'Pago') {
-                document.getElementById('filterBtnPago').classList.add('rounded-r-lg');
-                document.getElementById('filterBtnTodas').classList.remove('rounded-l-lg');
-            } else {
-                document.getElementById('filterBtnTodas').classList.remove('rounded-l-lg');
-                document.getElementById('filterBtnPago').classList.remove('rounded-r-lg');
-            }
-
             updateUI();
         }
 
@@ -281,7 +264,7 @@
                         <td class="p-3">R$ ${p.price.toFixed(2).replace('.', ',')}</td>
                         <td class="p-3 ${p.qty === 0 ? 'text-red-500 font-bold' : ''}">${p.qty} un</td>
                         <td class="p-3 flex gap-2">
-                            <button onclick="openRestockModal(${p.id})" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition" title="Adicionar mais unidades">+</button>
+                            <button onclick="openRestockModal(${p.id})" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition">+</button>
                             <button onclick="deleteProduct(${p.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition">Excluir</button>
                         </td>
                     `;
@@ -289,7 +272,6 @@
                 });
             }
 
-            // Filtrar vendas com base na escolha atual
             salesTableBody.innerHTML = '';
             let filteredSales = sales.map((sale, originalIndex) => ({ ...sale, originalIndex }));
             
@@ -338,48 +320,42 @@
             productForm.reset();
         });
 
-        // Funções de Exportar e Importar Estoque (CSV)
         function exportToExcel() {
             if (products.length === 0) {
                 alert('Não há produtos no estoque para exportar!');
                 return;
             }
-
-            let csvContent = "data:text/csv;charset=utf-8,Nome,Preco,Quantidade\n";
-
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFFNome;Preco;Quantidade\n";
             products.forEach(p => {
                 let priceStr = p.price.toFixed(2).replace('.', ',');
-                csvContent += `"${p.name}",${priceStr},${p.qty}\n`;
+                csvContent += `"${p.name}";${priceStr};${p.qty}\n`;
             });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "estoque_produtos.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            downloadCSV(csvContent, "estoque_produtos.csv");
         }
 
-        // Função para Exportar Vendas para o Excel (CSV)
+        // Função corrigida para separar as colunas corretamente no Excel com ponto e vírgula (;)
         function exportSalesToExcel() {
             if (sales.length === 0) {
                 alert('Não há vendas registradas para exportar!');
                 return;
             }
-
-            let csvContent = "data:text/csv;charset=utf-8,ID,Cliente,Produtos,Valor Total,Status,Data\n";
+            // \uFEFF adiciona o formato UTF-8 para aceitar acentos corretamente no Excel
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFFID;Cliente;Produtos;Valor Total;Status;Data\n";
 
             sales.forEach((s, index) => {
-                let itensDesc = s.items.map(i => `${i.qty}x ${i.name} (R$ ${i.price.toFixed(2)})`).join(' | ');
+                let itensDesc = s.items.map(i => `${i.qty}x ${i.name} (R$ ${i.price.toFixed(2).replace('.', ',')})`).join(' | ');
                 let totalStr = s.total.toFixed(2).replace('.', ',');
-                csvContent += `"#${index + 1}","${s.client}","${itensDesc}",${totalStr},"${s.status}","${s.date}"\n`;
+                csvContent += `"#${index + 1}";"${s.client}";"${itensDesc}";"${totalStr}";"${s.status}";"${s.date}"\n`;
             });
 
-            const encodedUri = encodeURI(csvContent);
+            downloadCSV(csvContent, "historico_vendas.csv");
+        }
+
+        function downloadCSV(content, filename) {
+            const encodedUri = encodeURI(content);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "historico_vendas.csv");
+            link.setAttribute("download", filename);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -399,11 +375,14 @@
                     const line = lines[i].trim();
                     if (!line) continue;
 
-                    const row = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                    // Suporta separador por vírgula ou ponto e vírgula
+                    const separator = line.includes(';') ? ';' : ',';
+                    const row = line.split(separator);
+                    
                     if (row && row.length >= 3) {
-                        const name = row[0].replace(/"/g, '');
-                        const price = parseFloat(row[1].replace(',', '.'));
-                        const qty = parseInt(row[2]);
+                        const name = row[0].replace(/"/g, '').trim();
+                        const price = parseFloat(row[1].replace(/"/g, '').replace(',', '.').trim());
+                        const qty = parseInt(row[2].replace(/"/g, '').trim());
 
                         if (name && !isNaN(price) && !isNaN(qty)) {
                             products.push({
