@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão - Belinna Store</title>
+    <title>GestãoBS</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Biblioteca SheetJS para exportação real em Excel (.xlsx) -->
@@ -20,7 +20,7 @@
 
     <!-- Cabeçalho Rose Gold -->
     <header class="bg-[#9c5863] text-white shadow-md py-4 px-6 flex flex-wrap justify-between items-center gap-4">
-        <h1 class="text-xl font-bold tracking-wide">✨ Gestão - Belinna Store Beauty&Makeup</h1>
+        <h1 class="text-xl font-bold tracking-wide">✨ Gestão - Belinna Store Beauty & Makeup</h1>
         <div class="flex flex-wrap gap-2">
             <button onclick="openMultiSaleModal()" class="bg-[#b76e79] hover:bg-[#8e525d] text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1">
                 🛒 Nova Venda Múltipla
@@ -39,22 +39,26 @@
     <main class="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
         
         <!-- Cards de Resumo -->
-        <div class="md:col-span-3 grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div class="md:col-span-3 grid grid-cols-1 sm:grid-cols-5 gap-4">
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-emerald-500">
-                <p class="text-gray-500 text-sm">Faturamento Recebido</p>
-                <h3 class="text-2xl font-bold text-gray-800" id="totalFaturamento">R$ 0,00</h3>
+                <p class="text-gray-500 text-xs">Faturamento Recebido</p>
+                <h3 class="text-xl font-bold text-gray-800" id="totalFaturamento">R$ 0,00</h3>
             </div>
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-amber-500">
-                <p class="text-gray-500 text-sm">A Receber (Fiado)</p>
-                <h3 class="text-2xl font-bold text-gray-800" id="totalFiado">R$ 0,00</h3>
+                <p class="text-gray-500 text-xs">A Receber (Fiado)</p>
+                <h3 class="text-xl font-bold text-gray-800" id="totalFiado">R$ 0,00</h3>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-indigo-500">
+                <p class="text-gray-500 text-xs">Lucro Líquido (Pago)</p>
+                <h3 class="text-xl font-bold text-indigo-600" id="totalLucro">R$ 0,00</h3>
             </div>
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-[#b76e79]">
-                <p class="text-gray-500 text-sm">Produtos Cadastrados</p>
-                <h3 class="text-2xl font-bold text-gray-800" id="totalProdutos">0</h3>
+                <p class="text-gray-500 text-xs">Produtos Cadastrados</p>
+                <h3 class="text-xl font-bold text-gray-800" id="totalProdutos">0</h3>
             </div>
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-[#a67c52]">
-                <p class="text-gray-500 text-sm">Vendas Realizadas</p>
-                <h3 class="text-2xl font-bold text-gray-800" id="totalVendas">0</h3>
+                <p class="text-gray-500 text-xs">Vendas Realizadas</p>
+                <h3 class="text-xl font-bold text-gray-800" id="totalVendas">0</h3>
             </div>
         </div>
 
@@ -71,8 +75,12 @@
                         <input type="text" id="prodName" required class="w-full mt-1 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#b76e79]">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-600">Preço (R$)</label>
-                        <input type="number" step="0.01" id="prodPrice" required class="w-full mt-1 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#b76e79]">
+                        <label class="block text-sm font-medium text-gray-600">Preço de Custo (Para Mim - R$)</label>
+                        <input type="number" step="0.01" id="prodCost" required placeholder="Ex: 10.00" class="w-full mt-1 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#b76e79]">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600">Preço de Venda (R$)</label>
+                        <input type="number" step="0.01" id="prodPrice" required placeholder="Ex: 25.00" class="w-full mt-1 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#b76e79]">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600">Quantidade Inicial</label>
@@ -95,7 +103,8 @@
                         <thead class="sticky top-0 bg-[#fdf5f5]">
                             <tr class="border-b border-[#f3e1e3] text-gray-600 text-sm">
                                 <th class="p-3">Produto</th>
-                                <th class="p-3">Preço Unitário</th>
+                                <th class="p-3">Custo</th>
+                                <th class="p-3">Venda</th>
                                 <th class="p-3">Estoque</th>
                                 <th class="p-3">Ações</th>
                             </tr>
@@ -134,8 +143,9 @@
                         <tr class="bg-[#fdf5f5] border-b border-[#f3e1e3] text-gray-600 text-sm">
                             <th class="p-3">ID</th>
                             <th class="p-3">Cliente</th>
-                            <th class="p-3">Produtos da Compra (Qtd & Valor Unitário)</th>
+                            <th class="p-3">Produtos da Compra (Qtd & Valor)</th>
                             <th class="p-3">Valor Total</th>
+                            <th class="p-3">Lucro da Venda</th>
                             <th class="p-3">Status Pagamento</th>
                             <th class="p-3">Data</th>
                             <th class="p-3">Ações</th>
@@ -186,7 +196,7 @@
             </div>
 
             <div class="mb-4">
-                <h3 class="font-semibold text-sm text-gray-700 mb-2">Itens Selecionados para esta Compra (Altere a quantidade direto na caixa):</h3>
+                <h3 class="font-semibold text-sm text-gray-700 mb-2">Itens Selecionados para esta Compra:</h3>
                 <div class="overflow-x-auto border border-gray-200 rounded">
                     <table class="w-full text-left text-sm">
                         <thead class="bg-gray-100 border-b text-gray-600">
@@ -237,6 +247,7 @@
         const totalVendasEl = document.getElementById('totalVendas');
         const totalFaturamentoEl = document.getElementById('totalFaturamento');
         const totalFiadoEl = document.getElementById('totalFiado');
+        const totalLucroEl = document.getElementById('totalLucro');
         const multiSaleModal = document.getElementById('multiSaleModal');
         const selectProduct = document.getElementById('selectProduct');
         const searchProductInput = document.getElementById('searchProductInput');
@@ -281,17 +292,32 @@
             const totalFaturamento = sales.filter(s => s.status === 'Pago').reduce((acc, sale) => acc + sale.total, 0);
             const totalFiado = sales.filter(s => s.status === 'Pendente').reduce((acc, sale) => acc + sale.total, 0);
 
+            // Cálculo do Lucro Total (considerando apenas vendas pagas)
+            let totalLucro = 0;
+            sales.forEach(sale => {
+                if (sale.status === 'Pago') {
+                    sale.items.forEach(item => {
+                        let custoUnit = item.cost !== undefined ? item.cost : 0;
+                        let lucroItem = (item.price - custoUnit) * item.qty;
+                        totalLucro += lucroItem;
+                    });
+                }
+            });
+
             totalFaturamentoEl.textContent = `R$ ${totalFaturamento.toFixed(2).replace('.', ',')}`;
             totalFiadoEl.textContent = `R$ ${totalFiado.toFixed(2).replace('.', ',')}`;
+            totalLucroEl.textContent = `R$ ${totalLucro.toFixed(2).replace('.', ',')}`;
 
             if (products.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">Nenhum produto cadastrado ainda.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">Nenhum produto cadastrado ainda.</td></tr>`;
             } else {
                 products.forEach(p => {
+                    let cost = p.cost !== undefined ? p.cost : 0;
                     const row = document.createElement('tr');
                     row.className = "border-b border-gray-100 hover:bg-[#fdf5f5]";
                     row.innerHTML = `
                         <td class="p-3 font-medium">${p.name}</td>
+                        <td class="p-3 text-gray-500">R$ ${cost.toFixed(2).replace('.', ',')}</td>
                         <td class="p-3">R$ ${p.price.toFixed(2).replace('.', ',')}</td>
                         <td class="p-3 ${p.qty === 0 ? 'text-red-500 font-bold' : ''}">${p.qty} un</td>
                         <td class="p-3 flex gap-2">
@@ -311,10 +337,16 @@
             }
 
             if (filteredSales.length === 0) {
-                salesTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">Nenhuma venda encontrada para este filtro.</td></tr>`;
+                salesTableBody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-gray-400">Nenhuma venda encontrada para este filtro.</td></tr>`;
             } else {
                 filteredSales.slice().reverse().forEach((s) => {
                     let itemsHtml = s.items.map(i => `${i.name} (${i.qty}x R$ ${i.price.toFixed(2).replace('.', ',')})`).join('<br>');
+
+                    // Calcular lucro desta venda específica
+                    let saleLucro = s.items.reduce((acc, item) => {
+                        let c = item.cost !== undefined ? item.cost : 0;
+                        return acc + ((item.price - c) * item.qty);
+                    }, 0);
 
                     const row = document.createElement('tr');
                     row.className = "border-b border-gray-100 hover:bg-[#fdf5f5]";
@@ -323,6 +355,7 @@
                         <td class="p-3 font-bold text-gray-800">${s.client}</td>
                         <td class="p-3 text-xs text-gray-700">${itemsHtml}</td>
                         <td class="p-3 font-semibold text-emerald-700">R$ ${s.total.toFixed(2).replace('.', ',')}</td>
+                        <td class="p-3 font-semibold text-indigo-600">R$ ${saleLucro.toFixed(2).replace('.', ',')}</td>
                         <td class="p-3">
                             <span class="px-2 py-1 rounded text-xs font-bold ${s.status === 'Pago' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}">
                                 ${s.status}
@@ -342,10 +375,11 @@
         productForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const name = document.getElementById('prodName').value;
+            const cost = parseFloat(document.getElementById('prodCost').value);
             const price = parseFloat(document.getElementById('prodPrice').value);
             const qty = parseInt(document.getElementById('prodQty').value);
 
-            products.push({ id: Date.now(), name, price, qty });
+            products.push({ id: Date.now(), name, cost, price, qty });
             saveData();
             updateUI();
             productForm.reset();
@@ -358,7 +392,8 @@
             }
             let dataToExport = products.map(p => ({
                 "Nome": p.name,
-                "Preço": p.price,
+                "Preço de Custo": p.cost || 0,
+                "Preço de Venda": p.price,
                 "Quantidade": p.qty
             }));
             let worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -374,12 +409,14 @@
             }
 
             let dataToExport = sales.map((s, index) => {
-                let itensDesc = s.items.map(i => `${i.qty}x ${i.name} (R$ ${i.price.toFixed(2)})`).join(' | ');
+                let itensDesc = s.items.map(i => `${i.qty}x ${i.name} (Venda: R$ ${i.price.toFixed(2)})`).join(' | ');
+                let saleLucro = s.items.reduce((acc, item) => acc + ((item.price - (item.cost || 0)) * item.qty), 0);
                 return {
                     "ID": `#${index + 1}`,
                     "Cliente": s.client,
                     "Produtos": itensDesc,
                     "Valor Total": s.total,
+                    "Lucro Líquido": saleLucro,
                     "Status": s.status,
                     "Data": s.date
                 };
@@ -406,13 +443,15 @@
                 let addedCount = 0;
                 json.forEach(row => {
                     const name = row['Nome'] || row['nome'];
-                    const price = parseFloat(row['Preço'] || row['Preco'] || row['preco']);
+                    const cost = parseFloat(row['Preço de Custo'] || row['Preco de Custo'] || row['custo'] || 0);
+                    const price = parseFloat(row['Preço de Venda'] || row['Preço'] || row['Preco'] || row['preco']);
                     const qty = parseInt(row['Quantidade'] || row['quantidade'] || row['Qtd']);
 
                     if (name && !isNaN(price) && !isNaN(qty)) {
                         products.push({
                             id: Date.now() + Math.random(),
                             name: name,
+                            cost: isNaN(cost) ? 0 : cost,
                             price: price,
                             qty: qty
                         });
@@ -480,7 +519,7 @@
             listToUse.forEach(p => {
                 const opt = document.createElement('option');
                 opt.value = p.id;
-                opt.textContent = `${p.name} - R$ ${p.price.toFixed(2).replace('.', ',')} (Estoque: ${p.qty})`;
+                opt.textContent = `${p.name} - Venda: R$ ${p.price.toFixed(2).replace('.', ',')} (Estoque: ${p.qty})`;
                 selectProduct.appendChild(opt);
             });
         }
@@ -515,6 +554,7 @@
                 currentCart.push({
                     productId: product.id,
                     name: product.name,
+                    cost: product.cost || 0,
                     price: product.price,
                     qty: qtyToAdd
                 });
@@ -565,7 +605,6 @@
             const item = currentCart[index];
             const product = products.find(p => p.id === item.productId);
 
-            // Se estiver editando uma venda existente, o estoque de origem já foi devolvido ou considerado. Vamos validar com base no produto geral.
             if (product && product.qty < qty) {
                 alert(`Estoque insuficiente! Disponível: ${product.qty}`);
                 updateCartTable();
