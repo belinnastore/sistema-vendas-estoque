@@ -51,43 +51,53 @@
             </div>
         </div>
 
-        <!-- Formulário de Cadastro de Produto -->
-        <div class="bg-white p-6 rounded-lg shadow md:col-span-1">
-            <h2 class="text-lg font-bold mb-4 text-gray-700">Cadastrar Produto</h2>
-            <form id="productForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-600">Nome do Produto</label>
-                    <input type="text" id="prodName" required class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-600">Preço (R$)</label>
-                    <input type="number" step="0.01" id="prodPrice" required class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-600">Quantidade Inicial</label>
-                    <input type="number" id="prodQty" required class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition">Salvar Produto</button>
-            </form>
+        <!-- Formulário de Cadastro de Produto (Recolhível) -->
+        <div class="bg-white p-6 rounded-lg shadow md:col-span-1 h-fit">
+            <div class="flex justify-between items-center cursor-pointer mb-2" onclick="toggleSection('productFormContainer', 'iconProd')">
+                <h2 class="text-lg font-bold text-gray-700">Cadastrar Produto</h2>
+                <span id="iconProd" class="text-gray-500 font-bold text-lg">▼</span>
+            </div>
+            <div id="productFormContainer" class="hidden transition-all duration-300 pt-2 border-t">
+                <form id="productForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600">Nome do Produto</label>
+                        <input type="text" id="prodName" required class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600">Preço (R$)</label>
+                        <input type="number" step="0.01" id="prodPrice" required class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600">Quantidade Inicial</label>
+                        <input type="number" id="prodQty" required class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition">Salvar Produto</button>
+                </form>
+            </div>
         </div>
 
-        <!-- Tabela de Estoque -->
-        <div class="bg-white p-6 rounded-lg shadow md:col-span-2">
-            <h2 class="text-lg font-bold mb-4 text-gray-700">Controle de Estoque</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-gray-50 border-b text-gray-600 text-sm">
-                            <th class="p-3">Produto</th>
-                            <th class="p-3">Preço Unitário</th>
-                            <th class="p-3">Estoque</th>
-                            <th class="p-3">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="stockTableBody" class="text-sm text-gray-700">
-                        <!-- Dinâmico via JS -->
-                    </tbody>
-                </table>
+        <!-- Tabela de Estoque (Recolhível e com Rolagem Interna) -->
+        <div class="bg-white p-6 rounded-lg shadow md:col-span-2 h-fit">
+            <div class="flex justify-between items-center cursor-pointer mb-2" onclick="toggleSection('stockTableContainer', 'iconStock')">
+                <h2 class="text-lg font-bold text-gray-700">Controle de Estoque</h2>
+                <span id="iconStock" class="text-gray-500 font-bold text-lg">▼</span>
+            </div>
+            <div id="stockTableContainer" class="hidden transition-all duration-300 pt-2 border-t">
+                <div class="overflow-y-auto max-h-96">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="sticky top-0 bg-gray-50">
+                            <tr class="border-b text-gray-600 text-sm">
+                                <th class="p-3">Produto</th>
+                                <th class="p-3">Preço Unitário</th>
+                                <th class="p-3">Estoque</th>
+                                <th class="p-3">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockTableBody" class="text-sm text-gray-700">
+                            <!-- Dinâmico via JS -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -226,6 +236,18 @@
         const cartTableBody = document.getElementById('cartTableBody');
         const cartTotalDisplay = document.getElementById('cartTotalDisplay');
 
+        function toggleSection(containerId, iconId) {
+            const container = document.getElementById(containerId);
+            const icon = document.getElementById(iconId);
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                icon.textContent = '▲';
+            } else {
+                container.classList.add('hidden');
+                icon.textContent = '▼';
+            }
+        }
+
         function saveData() {
             localStorage.setItem('products', JSON.stringify(products));
             localStorage.setItem('sales', JSON.stringify(sales));
@@ -338,14 +360,12 @@
             XLSX.writeFile(workbook, "estoque_produtos.xlsx");
         }
 
-        // Exportação profissional usando biblioteca real do Excel
         function exportSalesToExcel() {
             if (sales.length === 0) {
                 alert('Não há vendas registradas para exportar!');
                 return;
             }
 
-            // Prepara os dados para o Excel
             let dataToExport = sales.map((s, index) => {
                 let itensDesc = s.items.map(i => `${i.qty}x ${i.name} (R$ ${i.price.toFixed(2)})`).join(' | ');
                 return {
@@ -358,7 +378,6 @@
                 };
             });
 
-            // Cria a planilha e faz o download automático como arquivo .xlsx real
             let worksheet = XLSX.utils.json_to_sheet(dataToExport);
             let workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Histórico de Vendas");
@@ -602,8 +621,6 @@
                     status: status,
                     date: oldSale.date
                 };
-
-                `Venda atualizada com sucesso!`;
             }
 
             saveData();
@@ -618,7 +635,6 @@
         }
 
         function openRestockModal(id) {
-            const product = products.id === id;
             const productObj = products.find(p => p.id === id);
             const qtdAdd = prompt(`Adicionar estoque para: ${productObj.name}\nQuantidade atual: ${productObj.qty}\n\nDigite quantas unidades quer adicionar:`);
             if (qtdAdd && !isNaN(qtdAdd) && parseInt(qtdAdd) > 0) {
