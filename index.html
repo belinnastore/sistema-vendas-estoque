@@ -106,7 +106,7 @@
 
     </main>
 
-    <!-- Modal de Venda (Aparece ao clicar em Vender) -->
+    <!-- Modal de Venda -->
     <div id="sellModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4">
         <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
             <h2 class="text-lg font-bold mb-4 text-gray-700" id="modalProdTitle">Registrar Venda</h2>
@@ -128,20 +128,39 @@
                     </select>
                 </div>
                 <div class="flex gap-2 pt-2">
-                    <button type="button" onclick="closeModal()" class="w-1/2 bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400 transition">Cancelar</button>
+                    <button type="button" onclick="closeModal('sellModal')" class="w-1/2 bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400 transition">Cancelar</button>
                     <button type="submit" class="w-1/2 bg-green-600 text-white p-2 rounded hover:bg-green-700 transition">Confirmar Venda</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Script de Lógica Avançada -->
+    <!-- Modal de Reposição de Estoque (Entrada) -->
+    <div id="restockModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h2 class="text-lg font-bold mb-4 text-gray-700" id="restockProdTitle">Adicionar Estoque</h2>
+            <form id="restockForm" class="space-y-4">
+                <input type="hidden" id="restockProdId">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600">Quantidade a Adicionar (Entrada)</label>
+                    <input type="number" id="addQty" min="1" value="1" required class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeModal('restockModal')" class="w-1/2 bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400 transition">Cancelar</button>
+                    <button type="submit" class="w-1/2 bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition">Adicionar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script Completo -->
     <script>
         let products = JSON.parse(localStorage.getItem('products')) || [];
         let sales = JSON.parse(localStorage.getItem('sales')) || [];
 
         const productForm = document.getElementById('productForm');
         const sellForm = document.getElementById('sellForm');
+        const restockForm = document.getElementById('restockForm');
         const tableBody = document.getElementById('stockTableBody');
         const salesTableBody = document.getElementById('salesTableBody');
         const totalProdutosEl = document.getElementById('totalProdutos');
@@ -149,6 +168,7 @@
         const totalFaturamentoEl = document.getElementById('totalFaturamento');
         const totalFiadoEl = document.getElementById('totalFiado');
         const sellModal = document.getElementById('sellModal');
+        const restockModal = document.getElementById('restockModal');
 
         function saveData() {
             localStorage.setItem('products', JSON.stringify(products));
@@ -156,19 +176,12 @@
         }
 
         function updateUI() {
-            // Atualiza Estoque
             tableBody.innerHTML = '';
             totalProdutosEl.textContent = products.length;
             totalVendasEl.textContent = sales.length;
 
-            // Calcula Faturamento Recebido e Fiado Pendente
-            const totalFaturamento = sales
-                .filter(s => s.status === 'Pago')
-                .reduce((acc, sale) => acc + sale.total, 0);
-
-            const totalFiado = sales
-                .filter(s => s.status === 'Pendente')
-                .reduce((acc, sale) => acc + sale.total, 0);
+            const totalFaturamento = sales.filter(s => s.status === 'Pago').reduce((acc, sale) => acc + sale.total, 0);
+            const totalFiado = sales.filter(s => s.status === 'Pendente').reduce((acc, sale) => acc + sale.total, 0);
 
             totalFaturamentoEl.textContent = `R$ ${totalFaturamento.toFixed(2).replace('.', ',')}`;
             totalFiadoEl.textContent = `R$ ${totalFiado.toFixed(2).replace('.', ',')}`;
@@ -184,6 +197,7 @@
                         <td class="p-3">R$ ${p.price.toFixed(2).replace('.', ',')}</td>
                         <td class="p-3 ${p.qty === 0 ? 'text-red-500 font-bold' : ''}">${p.qty} un</td>
                         <td class="p-3 flex gap-2">
+                            <button onclick="openRestockModal(${p.id})" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition" title="Adicionar mais unidades">+</button>
                             <button onclick="openSellModal(${p.id})" class="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition ${p.qty === 0 ? 'opacity-50 cursor-not-allowed' : ''}">Vender</button>
                             <button onclick="deleteProduct(${p.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition">Excluir</button>
                         </td>
@@ -192,7 +206,6 @@
                 });
             }
 
-            // Atualiza Histórico de Vendas
             salesTableBody.innerHTML = '';
             if (sales.length === 0) {
                 salesTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">Nenhuma venda registrada ainda.</td></tr>`;
@@ -221,7 +234,6 @@
             }
         }
 
-        // Cadastro de Produto
         productForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const name = document.getElementById('prodName').value;
@@ -234,7 +246,30 @@
             productForm.reset();
         });
 
-        // Abrir Modal de Venda
+        // Controle do Modal de Reposição (+)
+        function openRestockModal(id) {
+            const product = products.find(p => p.id === id);
+            document.getElementById('restockProdId').value = product.id;
+            document.getElementById('restockProdTitle').textContent = `Adicionar Estoque: ${product.name} (Atual: ${product.qty})`;
+            document.getElementById('addQty').value = 1;
+            restockModal.classList.remove('hidden');
+        }
+
+        restockForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const prodId = parseInt(document.getElementById('restockProdId').value);
+            const addQty = parseInt(document.getElementById('addQty').value);
+
+            const product = products.find(p => p.id === prodId);
+            if (product) {
+                product.qty += addQty; // Soma ao estoque atual
+                saveData();
+                updateUI();
+                closeModal('restockModal');
+            }
+        });
+
+        // Controle do Modal de Venda
         function openSellModal(id) {
             const product = products.find(p => p.id === id);
             if (product.qty <= 0) {
@@ -249,11 +284,10 @@
             sellModal.classList.remove('hidden');
         }
 
-        function closeModal() {
-            sellModal.classList.add('hidden');
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
         }
 
-        // Confirmar Venda pelo Modal
         sellForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const prodId = parseInt(document.getElementById('modalProdId').value);
@@ -268,10 +302,8 @@
                 return;
             }
 
-            // Baixa no estoque
             product.qty -= qty;
 
-            // Registra a venda
             sales.push({
                 productId: product.id,
                 name: product.name,
@@ -284,24 +316,21 @@
 
             saveData();
             updateUI();
-            closeModal();
+            closeModal('sellModal');
         });
 
-        // Marcar venda pendente como paga
         function markAsPaid(index) {
             sales[index].status = 'Pago';
             saveData();
             updateUI();
         }
 
-        // Excluir Produto
         function deleteProduct(id) {
             products = products.filter(p => p.id !== id);
             saveData();
             updateUI();
         }
 
-        // Limpar Histórico
         function clearSalesHistory() {
             if (confirm('Deseja realmente limpar todo o histórico de vendas?')) {
                 sales = [];
