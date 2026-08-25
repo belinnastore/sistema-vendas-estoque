@@ -49,7 +49,7 @@
                 <h3 class="text-xl font-bold text-gray-800" id="totalFiado">R$ 0,00</h3>
             </div>
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-indigo-500">
-                <p class="text-gray-500 text-xs">Lucro Líquido (Pago)</p>
+                <p class="text-gray-500 text-xs">Lucro Líquido Total</p>
                 <h3 class="text-xl font-bold text-indigo-600" id="totalLucro">R$ 0,00</h3>
             </div>
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-[#b76e79]">
@@ -93,9 +93,14 @@
 
         <!-- Tabela de Estoque (Recolhível e com Rolagem Interna) -->
         <div class="bg-white p-6 rounded-lg shadow md:col-span-2 h-fit border border-[#f3e1e3]">
-            <div class="flex justify-between items-center cursor-pointer mb-2 select-none" onclick="toggleSection('stockTableContainer', 'iconStock')">
-                <h2 class="text-lg font-bold text-[#9c5863]">Controle de Estoque</h2>
-                <span id="iconStock" class="text-[#b76e79] font-bold text-lg">▼</span>
+            <div class="flex justify-between items-center mb-3">
+                <div class="flex items-center gap-2 cursor-pointer select-none" onclick="toggleSection('stockTableContainer', 'iconStock')">
+                    <h2 class="text-lg font-bold text-[#9c5863]">Controle de Estoque</h2>
+                    <span id="iconStock" class="text-[#b76e79] font-bold text-lg">▼</span>
+                </div>
+                <button onclick="saveAllInlineProducts()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded shadow transition flex items-center gap-1">
+                    💾 Salvar Todos os Custos
+                </button>
             </div>
             <div id="stockTableContainer" class="hidden transition-all duration-300 pt-2 border-t border-[#f3e1e3]">
                 <div class="overflow-y-auto max-h-96">
@@ -292,16 +297,16 @@
             const totalFaturamento = sales.filter(s => s.status === 'Pago').reduce((acc, sale) => acc + sale.total, 0);
             const totalFiado = sales.filter(s => s.status === 'Pendente').reduce((acc, sale) => acc + sale.total, 0);
 
-            // Cálculo do Lucro Total (considerando apenas vendas pagas)
+            // Cálculo do Lucro Total (considerando todas as vendas para você ver o lucro real do negócio)
             let totalLucro = 0;
             sales.forEach(sale => {
-                if (sale.status === 'Pago') {
-                    sale.items.forEach(item => {
-                        let custoUnit = item.cost !== undefined ? item.cost : 0;
-                        let lucroItem = (item.price - custoUnit) * item.qty;
-                        totalLucro += lucroItem;
-                    });
-                }
+                sale.items.forEach(item => {
+                    // Tenta buscar o custo atualizado do estoque, senão usa o salvo no item da venda
+                    let prodObj = products.find(p => p.id === item.productId);
+                    let custoUnit = prodObj && prodObj.cost !== undefined ? prodObj.cost : (item.cost !== undefined ? item.cost : 0);
+                    let lucroItem = (item.price - custoUnit) * item.qty;
+                    totalLucro += lucroItem;
+                });
             });
 
             totalFaturamentoEl.textContent = `R$ ${totalFaturamento.toFixed(2).replace('.', ',')}`;
@@ -347,9 +352,10 @@
                 filteredSales.slice().reverse().forEach((s) => {
                     let itemsHtml = s.items.map(i => `${i.name} (${i.qty}x R$ ${i.price.toFixed(2).replace('.', ',')})`).join('<br>');
 
-                    // Calcular lucro desta venda específica
+                    // Calcular lucro desta venda específica considerando o custo atual do produto
                     let saleLucro = s.items.reduce((acc, item) => {
-                        let c = item.cost !== undefined ? item.cost : 0;
+                        let prodObj = products.find(p => p.id === item.productId);
+                        let c = prodObj && prodObj.cost !== undefined ? prodObj.cost : (item.cost !== undefined ? item.cost : 0);
                         return acc + ((item.price - c) * item.qty);
                     }, 0);
 
@@ -411,6 +417,24 @@
             }
         }
 
+        function saveAllInlineProducts() {
+            let count = 0;
+            products.forEach(p => {
+                const costInput = document.getElementById(`cost_${p.id}`);
+                const priceInput = document.getElementById(`price_${p.id}`);
+                if (costInput && priceInput) {
+                    let c = parseFloat(costInput.value);
+                    let pr = parseFloat(priceInput.value);
+                    if (!isNaN(c)) p.cost = c;
+                    if (!isNaN(pr)) p.price = pr;
+                    count++;
+                }
+            });
+            saveData();
+            updateUI();
+            alert(`Todos os ${count} produtos foram atualizados com sucesso!`);
+        }
+
         function exportToExcel() {
             if (products.length === 0) {
                 alert('Não há produtos no estoque para exportar!');
@@ -436,7 +460,11 @@
 
             let dataToExport = sales.map((s, index) => {
                 let itensDesc = s.items.map(i => `${i.qty}x ${i.name} (Venda: R$ ${i.price.toFixed(2)})`).join(' | ');
-                let saleLucro = s.items.reduce((acc, item) => acc + ((item.price - (item.cost || 0)) * item.qty), 0);
+                let saleLucro = s.items.reduce((acc, item) => {
+                    let prodObj = products.find(p => p.id === item.productId);
+                    let c = prodObj && prodObj.cost !== undefined ? prodObj.cost : (item.cost || 0);
+                    return acc + ((item.price - c) * item.qty);
+                }, 0);
                 return {
                     "ID": `#${index + 1}`,
                     "Cliente": s.client,
