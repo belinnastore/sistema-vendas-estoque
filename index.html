@@ -20,7 +20,7 @@
 
     <!-- Cabeçalho Rose Gold -->
     <header class="bg-[#9c5863] text-white shadow-md py-4 px-6 flex flex-wrap justify-between items-center gap-4">
-        <h1 class="text-xl font-bold tracking-wide">✨ Gestão - Belinna Store Beauty & Makup</h1>
+        <h1 class="text-xl font-bold tracking-wide">✨ Gestão - Belinna Store Beauty & Makeup</h1>
         <div class="flex flex-wrap gap-2">
             <button onclick="openMultiSaleModal()" class="bg-[#b76e79] hover:bg-[#8e525d] text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1">
                 🛒 Nova Venda Múltipla
@@ -297,11 +297,9 @@
             const totalFaturamento = sales.filter(s => s.status === 'Pago').reduce((acc, sale) => acc + sale.total, 0);
             const totalFiado = sales.filter(s => s.status === 'Pendente').reduce((acc, sale) => acc + sale.total, 0);
 
-            // Cálculo do Lucro Total (considerando todas as vendas para você ver o lucro real do negócio)
             let totalLucro = 0;
             sales.forEach(sale => {
                 sale.items.forEach(item => {
-                    // Tenta buscar o custo atualizado do estoque, senão usa o salvo no item da venda
                     let prodObj = products.find(p => p.id === item.productId);
                     let custoUnit = prodObj && prodObj.cost !== undefined ? prodObj.cost : (item.cost !== undefined ? item.cost : 0);
                     let lucroItem = (item.price - custoUnit) * item.qty;
@@ -352,7 +350,6 @@
                 filteredSales.slice().reverse().forEach((s) => {
                     let itemsHtml = s.items.map(i => `${i.name} (${i.qty}x R$ ${i.price.toFixed(2).replace('.', ',')})`).join('<br>');
 
-                    // Calcular lucro desta venda específica considerando o custo atual do produto
                     let saleLucro = s.items.reduce((acc, item) => {
                         let prodObj = products.find(p => p.id === item.productId);
                         let c = prodObj && prodObj.cost !== undefined ? prodObj.cost : (item.cost !== undefined ? item.cost : 0);
@@ -373,9 +370,10 @@
                             </span>
                         </td>
                         <td class="p-3 text-gray-500 text-xs">${s.date}</td>
-                        <td class="p-3 flex gap-1 items-center">
+                        <td class="p-3 flex gap-1 items-center flex-wrap">
                             <button onclick="openEditSaleModal(${s.originalIndex})" class="bg-amber-500 text-white px-2 py-1 rounded text-xs hover:bg-amber-600 transition">Editar</button>
-                            ${s.status === 'Pendente' ? `<button onclick="markAsPaid(${s.originalIndex})" class="bg-[#b76e79] text-white px-2 py-1 rounded text-xs hover:bg-[#9c5863]">Receber</button>` : '<span class="text-xs text-gray-400">Quitado</span>'}
+                            ${s.status === 'Pendente' ? `<button onclick="markAsPaid(${s.originalIndex})" class="bg-[#b76e79] text-white px-2 py-1 rounded text-xs hover:bg-[#9c5863]">Receber</button>` : ''}
+                            <button onclick="deleteSale(${s.originalIndex})" class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition">Excluir</button>
                         </td>
                     `;
                     salesTableBody.appendChild(row);
@@ -756,6 +754,23 @@
             sales[index].status = 'Pago';
             saveData();
             updateUI();
+        }
+
+        function deleteSale(index) {
+            if (confirm(`Deseja realmente excluir a venda #${index + 1} (${sales[index].client})? Os itens voltarão para o estoque.`)) {
+                // Devolve os itens ao estoque
+                sales[index].items.forEach(item => {
+                    const prod = products.find(p => p.id === item.productId);
+                    if (prod) {
+                        prod.qty += item.qty;
+                    }
+                });
+
+                sales.splice(index, 1);
+                saveData();
+                updateUI();
+                alert('Venda excluída com sucesso e itens estornados para o estoque!');
+            }
         }
 
         function openRestockModal(id) {
