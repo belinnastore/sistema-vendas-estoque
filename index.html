@@ -25,7 +25,7 @@
             <button onclick="openMultiSaleModal()" class="bg-[#b76e79] hover:bg-[#8e525d] text-white font-bold px-4 py-2 rounded shadow transition text-sm flex items-center gap-1">
                 🛒 Nova Venda
             </button>
-            <button onclick="exportFullBackup()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1" title="Salva tudo para usar no celular">
+            <button onclick="exportFullBackup()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1" title="Salva tudo de uma vez para segurança">
                 📱 Baixar Backup
             </button>
             <label class="bg-amber-700 hover:bg-amber-800 text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1 cursor-pointer" title="Carrega seu backup salvo">
@@ -136,7 +136,6 @@
             <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
                 <h2 class="text-lg font-bold text-[#9c5863]">Histórico Detalhado de Vendas</h2>
                 
-                <!-- Filtros e Ações de Vendas (Com Importação Adicionada) -->
                 <div class="flex flex-wrap items-center gap-2">
                     <div class="inline-flex rounded-md shadow-sm" role="group">
                         <button type="button" onclick="setSalesFilter('Todas')" id="filterBtnTodas" class="px-3 py-1.5 text-xs font-medium rounded-l-lg bg-[#b76e79] text-white transition">Todas</button>
@@ -342,7 +341,7 @@
                         <td class="p-3 ${p.qty === 0 ? 'text-red-500 font-bold' : ''}">${p.qty} un</td>
                         <td class="p-3 flex gap-1 items-center">
                             <button onclick="updateInlineProduct(${p.id})" class="bg-indigo-600 text-white px-2 py-1 rounded text-xs hover:bg-indigo-700 transition" title="Salvar alteração">Salvar</button>
-                            <button onclick="openRestockModal(${p.id})" class="bg-[#b76e79] text-white px-2 py-1 rounded text-xs hover:bg-[#9c5863] transition" title="Adicionar quantidade">+</button>
+                            <button onclick="openRestockModal(${p.id})" class="bg-[#b76e79] text-white px-2 py-1 rounded text-xs hover:bg-[#9c5863]" title="Adicionar">+</button>
                             <button onclick="deleteProduct(${p.id})" class="bg-red-400 text-white px-2 py-1 rounded text-xs hover:bg-red-500 transition">Excluir</button>
                         </td>
                     `;
@@ -394,13 +393,8 @@
             }
         }
 
-        // Funções de Backup Completo para o Celular
         function exportFullBackup() {
-            const backupData = {
-                products: products,
-                sales: sales,
-                date: new Date().toISOString()
-            };
+            const backupData = { products: products, sales: sales, date: new Date().toISOString() };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
@@ -413,7 +407,6 @@
         function importFullBackup(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
@@ -423,7 +416,7 @@
                         sales = backup.sales;
                         saveData();
                         updateUI();
-                        alert('Backup carregado com sucesso no celular!');
+                        alert('Backup completo carregado com sucesso!');
                     } else {
                         alert('Arquivo de backup inválido.');
                     }
@@ -534,6 +527,7 @@
             XLSX.writeFile(workbook, "historico_vendas.xlsx");
         }
 
+        // Importação de estoque corrigida para ler TODAS as linhas sem limite ou corte
         function importFromExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -544,22 +538,24 @@
                 const workbook = XLSX.read(data, { type: 'array' });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet);
+                
+                // Força ler o range completo garantindo que nenhuma linha seja ignorada
+                const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
                 let addedCount = 0;
                 json.forEach(row => {
-                    const name = row['Nome'] || row['nome'];
+                    const name = row['Nome'] || row['nome'] || row['NOME'];
                     const cost = parseFloat(row['Preço de Custo'] || row['Preco de Custo'] || row['custo'] || 0);
-                    const price = parseFloat(row['Preço de Venda'] || row['Preço'] || row['Preco'] || row['preco']);
-                    const qty = parseInt(row['Quantidade'] || row['quantidade'] || row['Qtd']);
+                    const price = parseFloat(row['Preço de Venda'] || row['Preço'] || row['Preco'] || row['preco'] || 0);
+                    const qty = parseInt(row['Quantidade'] || row['quantidade'] || row['Qtd'] || 0);
 
-                    if (name && !isNaN(price) && !isNaN(qty)) {
+                    if (name && name.toString().trim() !== "") {
                         products.push({
                             id: Date.now() + Math.random(),
-                            name: name,
+                            name: name.toString().trim(),
                             cost: isNaN(cost) ? 0 : cost,
-                            price: price,
-                            qty: qty
+                            price: isNaN(price) ? 0 : price,
+                            qty: isNaN(qty) ? 0 : qty
                         });
                         addedCount++;
                     }
@@ -567,12 +563,13 @@
 
                 saveData();
                 updateUI();
-                alert(`Importação concluída! ${addedCount} produtos adicionados ao estoque.`);
+                alert(`Importação concluída! ${addedCount} produtos carregados sem restrições.`);
                 event.target.value = '';
             };
             reader.readAsArrayBuffer(file);
         }
 
+        // Importação de vendas corrigida para ler TODAS as linhas sem limite ou corte
         function importSalesFromExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -583,20 +580,21 @@
                 const workbook = XLSX.read(data, { type: 'array' });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet);
+                
+                // Força ler o range completo garantindo que nenhuma linha seja ignorada
+                const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
                 let addedCount = 0;
                 json.forEach(row => {
-                    const client = row['Cliente'] || row['cliente'];
+                    const client = row['Cliente'] || row['cliente'] || row['CLIENTE'];
                     const produtosStr = row['Produtos'] || row['produtos'] || '';
                     const total = parseFloat(row['Valor Total'] || row['Valor Total (R$)'] || row['total'] || 0);
                     const status = row['Status'] || row['status'] || 'Pago';
                     const date = row['Data'] || row['data'] || new Date().toLocaleString('pt-BR');
 
-                    if (client) {
+                    if (client && client.toString().trim() !== "") {
                         let parsedItems = [];
                         if (produtosStr) {
-                            // Exemplo de formato gerado na exportação: 1x BATOM (Venda: R$ 25.00) | 2x GLOSS (Venda: R$ 15.00)
                             let parts = produtosStr.split('|');
                             parts.forEach(part => {
                                 let match = part.trim().match(/^(\d+)x\s+(.*?)\s+\(Venda:\s+R\$\s*([\d.,]+)\)$/i);
@@ -605,7 +603,6 @@
                                     let name = match[2].trim();
                                     let price = parseFloat(match[3].replace('.', '').replace(',', '.'));
                                     
-                                    // Tenta achar o produto correspondente para vincular o custo correto se existir
                                     let prodRef = products.find(p => p.name.toLowerCase() === name.toLowerCase());
                                     parsedItems.push({
                                         productId: prodRef ? prodRef.id : Date.now() + Math.random(),
@@ -615,12 +612,11 @@
                                         qty: qty
                                     });
                                 } else {
-                                    // Fallback caso o texto esteja em formato simples
                                     parsedItems.push({
                                         productId: Date.now() + Math.random(),
                                         name: part.trim(),
                                         cost: 0,
-                                        price: total,
+                                        price: isNaN(total) ? 0 : total,
                                         qty: 1
                                     });
                                 }
@@ -628,11 +624,11 @@
                         }
 
                         sales.push({
-                            client: client,
-                            items: parsedItems.length > 0 ? parsedItems : [{ productId: Date.now(), name: "Produto Diversos", cost: 0, price: total, qty: 1 }],
+                            client: client.toString().trim(),
+                            items: parsedItems.length > 0 ? parsedItems : [{ productId: Date.now(), name: "Diversos", cost: 0, price: isNaN(total) ? 0 : total, qty: 1 }],
                             total: isNaN(total) ? 0 : total,
-                            status: status,
-                            date: date
+                            status: status.toString().trim(),
+                            date: date.toString().trim()
                         });
                         addedCount++;
                     }
@@ -640,7 +636,7 @@
 
                 saveData();
                 updateUI();
-                alert(`Importação de vendas concluída! ${addedCount} vendas adicionadas ao histórico.`);
+                alert(`Importação de vendas concluída! ${addedCount} registros carregados com sucesso.`);
                 event.target.value = '';
             };
             reader.readAsArrayBuffer(file);
