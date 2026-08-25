@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GestãoBS</title>
+    <title>GestãoFácil - Rose Gold Edition</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Biblioteca SheetJS para exportação real em Excel (.xlsx) -->
@@ -20,7 +20,7 @@
 
     <!-- Cabeçalho Rose Gold -->
     <header class="bg-[#9c5863] text-white shadow-md py-4 px-6 flex flex-wrap justify-between items-center gap-4">
-        <h1 class="text-xl font-bold tracking-wide">✨ Gestão - Belinna Store Beauty & Makeup</h1>
+        <h1 class="text-xl font-bold tracking-wide">✨ GestãoFácil - Rose Gold</h1>
         <div class="flex flex-wrap gap-2">
             <button onclick="openMultiSaleModal()" class="bg-[#b76e79] hover:bg-[#8e525d] text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1">
                 🛒 Nova Venda Múltipla
@@ -103,8 +103,8 @@
                         <thead class="sticky top-0 bg-[#fdf5f5]">
                             <tr class="border-b border-[#f3e1e3] text-gray-600 text-sm">
                                 <th class="p-3">Produto</th>
-                                <th class="p-3">Custo</th>
-                                <th class="p-3">Venda</th>
+                                <th class="p-3">Custo (R$)</th>
+                                <th class="p-3">Venda (R$)</th>
                                 <th class="p-3">Estoque</th>
                                 <th class="p-3">Ações</th>
                             </tr>
@@ -317,11 +317,16 @@
                     row.className = "border-b border-gray-100 hover:bg-[#fdf5f5]";
                     row.innerHTML = `
                         <td class="p-3 font-medium">${p.name}</td>
-                        <td class="p-3 text-gray-500">R$ ${cost.toFixed(2).replace('.', ',')}</td>
-                        <td class="p-3">R$ ${p.price.toFixed(2).replace('.', ',')}</td>
+                        <td class="p-3">
+                            <input type="number" step="0.01" id="cost_${p.id}" value="${cost}" class="w-24 p-1 border rounded text-sm bg-white">
+                        </td>
+                        <td class="p-3">
+                            <input type="number" step="0.01" id="price_${p.id}" value="${p.price}" class="w-24 p-1 border rounded text-sm bg-white">
+                        </td>
                         <td class="p-3 ${p.qty === 0 ? 'text-red-500 font-bold' : ''}">${p.qty} un</td>
-                        <td class="p-3 flex gap-2">
-                            <button onclick="openRestockModal(${p.id})" class="bg-[#b76e79] text-white px-2 py-1 rounded text-xs hover:bg-[#9c5863] transition">+</button>
+                        <td class="p-3 flex gap-1 items-center">
+                            <button onclick="updateInlineProduct(${p.id})" class="bg-indigo-600 text-white px-2 py-1 rounded text-xs hover:bg-indigo-700 transition" title="Salvar alteração">Salvar</button>
+                            <button onclick="openRestockModal(${p.id})" class="bg-[#b76e79] text-white px-2 py-1 rounded text-xs hover:bg-[#9c5863] transition" title="Adicionar quantidade">+</button>
                             <button onclick="deleteProduct(${p.id})" class="bg-red-400 text-white px-2 py-1 rounded text-xs hover:bg-red-500 transition">Excluir</button>
                         </td>
                     `;
@@ -384,6 +389,27 @@
             updateUI();
             productForm.reset();
         });
+
+        function updateInlineProduct(id) {
+            const costInput = document.getElementById(`cost_${id}`);
+            const priceInput = document.getElementById(`price_${id}`);
+            const newCost = parseFloat(costInput.value);
+            const newPrice = parseFloat(priceInput.value);
+
+            if (isNaN(newCost) || isNaN(newPrice)) {
+                alert('Insira valores válidos!');
+                return;
+            }
+
+            const product = products.find(p => p.id === id);
+            if (product) {
+                product.cost = newCost;
+                product.price = newPrice;
+                saveData();
+                updateUI();
+                alert('Preços atualizados com sucesso!');
+            }
+        }
 
         function exportToExcel() {
             if (products.length === 0) {
