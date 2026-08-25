@@ -117,11 +117,13 @@
 
     </main>
 
-    <!-- Modal de Venda Múltipla (Carrinho) -->
+    <!-- Modal de Venda Múltipla (Carrinho / Nova ou Edição) -->
     <div id="multiSaleModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4">
         <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 class="text-xl font-bold mb-4 text-gray-800">Nova Venda (Carrinho de Compras)</h2>
+            <h2 class="text-xl font-bold mb-4 text-gray-800" id="modalSaleTitle">Nova Venda (Carrinho de Compras)</h2>
             
+            <input type="hidden" id="editSaleIndex" value="">
+
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-600">Nome do Cliente</label>
                 <input type="text" id="multiClientName" required placeholder="Ex: Kaylane" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
@@ -177,7 +179,7 @@
 
             <div class="flex gap-2 pt-2">
                 <button type="button" onclick="closeMultiSaleModal()" class="w-1/2 bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400 transition">Cancelar</button>
-                <button type="button" onclick="finalizeMultiSale()" class="w-1/2 bg-green-600 text-white p-2 rounded hover:bg-green-700 transition font-bold">Finalizar Venda</button>
+                <button type="button" onclick="finalizeMultiSale()" class="w-1/2 bg-green-600 text-white p-2 rounded hover:bg-green-700 transition font-bold" id="btnSaveSale">Finalizar Venda</button>
             </div>
         </div>
     </div>
@@ -256,7 +258,8 @@
                             </span>
                         </td>
                         <td class="p-3 text-gray-500 text-xs">${s.date}</td>
-                        <td class="p-3">
+                        <td class="p-3 flex gap-1 items-center">
+                            <button onclick="openEditSaleModal(${realIndex})" class="bg-amber-500 text-white px-2 py-1 rounded text-xs hover:bg-amber-600 transition">Editar</button>
                             ${s.status === 'Pendente' ? `<button onclick="markAsPaid(${realIndex})" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600">Receber</button>` : '<span class="text-xs text-gray-400">Quitado</span>'}
                         </td>
                     `;
@@ -341,15 +344,36 @@
             reader.readAsText(file, 'UTF-8');
         }
 
-        // Funções do Carrinho / Venda Múltipla
+        // Funções do Carrinho / Venda Múltipla (Nova Venda)
         function openMultiSaleModal() {
             if (products.length === 0) {
                 alert('Cadastre produtos no estoque antes de realizar uma venda!');
                 return;
             }
             currentCart = [];
+            document.getElementById('editSaleIndex').value = '';
+            document.getElementById('modalSaleTitle').textContent = 'Nova Venda (Carrinho de Compras)';
+            document.getElementById('btnSaveSale').textContent = 'Finalizar Venda';
             document.getElementById('multiClientName').value = '';
             document.getElementById('addItemQty').value = 1;
+            document.getElementById('multiPaymentStatus').value = 'Pago';
+            populateSelectProducts();
+            updateCartTable();
+            multiSaleModal.classList.remove('hidden');
+        }
+
+        // Abrir Modal para EDITAR uma venda existente
+        function openEditSaleModal(index) {
+            const sale = sales[index];
+            currentCart = JSON.parse(JSON.stringify(sale.items)); // Copia os itens da venda
+
+            document.getElementById('editSaleIndex').value = index;
+            document.getElementById('modalSaleTitle').textContent = `Editar Venda #${index + 1} - ${sale.client}`;
+            document.getElementById('btnSaveSale').textContent = 'Salvar Alterações';
+            document.getElementById('multiClientName').value = sale.client;
+            document.getElementById('multiPaymentStatus').value = sale.status;
+            document.getElementById('addItemQty').value = 1;
+
             populateSelectProducts();
             updateCartTable();
             multiSaleModal.classList.remove('hidden');
@@ -435,6 +459,7 @@
         function finalizeMultiSale() {
             const client = document.getElementById('multiClientName').value.trim();
             const status = document.getElementById('multiPaymentStatus').value;
+            const editIndex = document.getElementById('editSaleIndex').value;
 
             if (!client) {
                 alert('Por favor, informe o nome do cliente!');
@@ -446,27 +471,76 @@
                 return;
             }
 
-            currentCart.forEach(cartItem => {
-                const prod = products.find(p => p.id === cartItem.productId);
-                if (prod) {
-                    prod.qty -= cartItem.qty;
-                }
-            });
-
             const totalCompra = currentCart.reduce((acc, item) => acc + (item.price * item.qty), 0);
 
-            sales.push({
-                client: client,
-                items: [...currentCart],
-                total: totalCompra,
-                status: status,
-                date: new Date().toLocaleString('pt-BR')
-            });
+            if (editIndex === "") {
+                // MODO: NOVA VENDA
+                currentCart.forEach(cartItem => {
+                    const prod = products.find(p => p.id === cartItem.productId);
+                    if (prod) {
+                        prod.qty -= cartItem.qty;
+                    }
+                });
+
+                sales.push({
+                    client: client,
+                    items: [...currentCart],
+                    total: totalCompra,
+                    status: status,
+                    date: new Date().toLocaleString('pt-BR')
+                });
+
+                alert('Venda registrada com sucesso!');
+            } else {
+                // MODO: EDITAR VENDA EXISTENTE
+                const idx = parseInt(editIndex);
+                const oldSale = sales[idx];
+
+                // 1. Devolve os itens antigos para o estoque
+                oldSale.items.forEach(oldItem => {
+                    const prod = products.find(p => p.id === oldItem.productId);
+                    if (prod) {
+                        prod.qty += oldItem.qty;
+                    }
+                });
+
+                // 2. Verifica se há estoque suficiente para os novos itens da edição
+                for (let cartItem of currentCart) {
+                    const prod = products.find(p => p.id === cartItem.productId);
+                    if (!prod || prod.qty < cartItem.qty) {
+                        alert(`Estoque insuficiente para o produto: ${cartItem.name}!`);
+                        // Reverte devolvendo o estoque antigo caso dê erro
+                        oldSale.items.forEach(oldItem => {
+                            const p = products.find(x => x.id === oldItem.productId);
+                            if (p) p.qty -= oldItem.qty;
+                        });
+                        return;
+                    }
+                }
+
+                // 3. Desconta os novos itens do estoque
+                currentCart.forEach(cartItem => {
+                    const prod = products.find(p => p.id === cartItem.productId);
+                    if (prod) {
+                        prod.qty -= cartItem.qty;
+                    }
+                });
+
+                // 4. Atualiza os dados da venda mantendo a data original
+                sales[idx] = {
+                    client: client,
+                    items: [...currentCart],
+                    total: totalCompra,
+                    status: status,
+                    date: oldSale.date
+                };
+
+                alert('Venda atualizada com sucesso!');
+            }
 
             saveData();
             updateUI();
             closeMultiSaleModal();
-            alert('Venda registrada com sucesso!');
         }
 
         function markAsPaid(index) {
