@@ -6,7 +6,7 @@
     <title>Gestão - Belinna Store Beauty & Makeup</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Biblioteca SheetJS para exportação real em Excel (.xlsx) -->
+    <!-- Biblioteca SheetJS para exportação e importação real em Excel (.xlsx) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         .bg-rosegold { background-color: #b76e79; }
@@ -98,7 +98,6 @@
                     <h2 class="text-lg font-bold text-[#9c5863]">Controle de Estoque</h2>
                     <span id="iconStock" class="text-[#b76e79] font-bold text-lg">▼</span>
                 </div>
-                <!-- Botões movidos para dentro do bloco de estoque -->
                 <div class="flex flex-wrap gap-1.5">
                     <button onclick="saveAllInlineProducts()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-2.5 py-1.5 rounded shadow transition flex items-center gap-1">
                         💾 Salvar Custos
@@ -132,12 +131,12 @@
             </div>
         </div>
 
-        <!-- Seção: Histórico Detalhado de Vendas com Filtros e Exportação -->
+        <!-- Seção: Histórico Detalhado de Vendas com Filtros e Exportação/Importação -->
         <div class="bg-white p-6 rounded-lg shadow md:col-span-3 border border-[#f3e1e3]">
             <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
                 <h2 class="text-lg font-bold text-[#9c5863]">Histórico Detalhado de Vendas</h2>
                 
-                <!-- Filtros e Ações de Vendas -->
+                <!-- Filtros e Ações de Vendas (Com Importação Adicionada) -->
                 <div class="flex flex-wrap items-center gap-2">
                     <div class="inline-flex rounded-md shadow-sm" role="group">
                         <button type="button" onclick="setSalesFilter('Todas')" id="filterBtnTodas" class="px-3 py-1.5 text-xs font-medium rounded-l-lg bg-[#b76e79] text-white transition">Todas</button>
@@ -148,6 +147,10 @@
                     <button onclick="exportSalesToExcel()" class="bg-[#a67c52] hover:bg-[#8c6743] text-white font-bold px-3 py-1.5 rounded shadow transition text-xs flex items-center gap-1">
                         📥 Exportar Vendas (Excel)
                     </button>
+                    <label class="bg-[#8c6743] hover:bg-[#735436] text-white font-bold px-3 py-1.5 rounded shadow transition text-xs flex items-center gap-1 cursor-pointer">
+                        📤 Importar Vendas (Excel)
+                        <input type="file" id="importSalesFile" accept=".csv,.xlsx" class="hidden" onchange="importSalesFromExcel(event)">
+                    </label>
                     <button onclick="clearSalesHistory()" class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-xs hover:bg-gray-300 transition">Limpar Histórico</button>
                 </div>
             </div>
@@ -565,6 +568,79 @@
                 saveData();
                 updateUI();
                 alert(`Importação concluída! ${addedCount} produtos adicionados ao estoque.`);
+                event.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function importSalesFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet);
+
+                let addedCount = 0;
+                json.forEach(row => {
+                    const client = row['Cliente'] || row['cliente'];
+                    const produtosStr = row['Produtos'] || row['produtos'] || '';
+                    const total = parseFloat(row['Valor Total'] || row['Valor Total (R$)'] || row['total'] || 0);
+                    const status = row['Status'] || row['status'] || 'Pago';
+                    const date = row['Data'] || row['data'] || new Date().toLocaleString('pt-BR');
+
+                    if (client) {
+                        let parsedItems = [];
+                        if (produtosStr) {
+                            // Exemplo de formato gerado na exportação: 1x BATOM (Venda: R$ 25.00) | 2x GLOSS (Venda: R$ 15.00)
+                            let parts = produtosStr.split('|');
+                            parts.forEach(part => {
+                                let match = part.trim().match(/^(\d+)x\s+(.*?)\s+\(Venda:\s+R\$\s*([\d.,]+)\)$/i);
+                                if (match) {
+                                    let qty = parseInt(match[1]);
+                                    let name = match[2].trim();
+                                    let price = parseFloat(match[3].replace('.', '').replace(',', '.'));
+                                    
+                                    // Tenta achar o produto correspondente para vincular o custo correto se existir
+                                    let prodRef = products.find(p => p.name.toLowerCase() === name.toLowerCase());
+                                    parsedItems.push({
+                                        productId: prodRef ? prodRef.id : Date.now() + Math.random(),
+                                        name: name,
+                                        cost: prodRef ? (prodRef.cost || 0) : 0,
+                                        price: isNaN(price) ? 0 : price,
+                                        qty: qty
+                                    });
+                                } else {
+                                    // Fallback caso o texto esteja em formato simples
+                                    parsedItems.push({
+                                        productId: Date.now() + Math.random(),
+                                        name: part.trim(),
+                                        cost: 0,
+                                        price: total,
+                                        qty: 1
+                                    });
+                                }
+                            });
+                        }
+
+                        sales.push({
+                            client: client,
+                            items: parsedItems.length > 0 ? parsedItems : [{ productId: Date.now(), name: "Produto Diversos", cost: 0, price: total, qty: 1 }],
+                            total: isNaN(total) ? 0 : total,
+                            status: status,
+                            date: date
+                        });
+                        addedCount++;
+                    }
+                });
+
+                saveData();
+                updateUI();
+                alert(`Importação de vendas concluída! ${addedCount} vendas adicionadas ao histórico.`);
                 event.target.value = '';
             };
             reader.readAsArrayBuffer(file);
