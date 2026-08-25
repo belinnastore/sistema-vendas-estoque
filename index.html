@@ -277,20 +277,16 @@
             productForm.reset();
         });
 
-        // ==========================================
-        // FUNÇÕES DE EXPORTAR E IMPORTAR EXCEL (CSV)
-        // ==========================================
+        // Funções de Exportar e Importar Excel (CSV)
         function exportToExcel() {
             if (products.length === 0) {
                 alert('Não há produtos no estoque para exportar!');
                 return;
             }
 
-            // Cabeçalho do arquivo CSV
             let csvContent = "data:text/csv;charset=utf-8,Nome,Preco,Quantidade\n";
 
             products.forEach(p => {
-                // Substitui ponto por vírgula no preço para ficar no formato PT-BR do Excel, se preferir
                 let priceStr = p.price.toFixed(2).replace('.', ',');
                 csvContent += `"${p.name}",${priceStr},${p.qty}\n`;
             });
@@ -315,12 +311,10 @@
                 
                 let addedCount = 0;
 
-                // Começa do 1 para pular o cabeçalho
                 for (let i = 1; i < lines.length; i++) {
                     const line = lines[i].trim();
                     if (!line) continue;
 
-                    // Regex para ler considerando valores entre aspas (caso o nome tenha espaços)
                     const row = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
                     if (row && row.length >= 3) {
                         const name = row[0].replace(/"/g, '');
@@ -342,7 +336,7 @@
                 saveData();
                 updateUI();
                 alert(`Importação concluída! ${addedCount} produtos adicionados ao estoque.`);
-                event.target.value = ''; // Limpa o input file
+                event.target.value = '';
             };
             reader.readAsText(file, 'UTF-8');
         }
@@ -440,7 +434,7 @@
 
         function finalizeMultiSale() {
             const client = document.getElementById('multiClientName').value.trim();
-            const status = document.getElementById('multiPaymentStatus        ').value;
+            const status = document.getElementById('multiPaymentStatus').value;
 
             if (!client) {
                 alert('Por favor, informe o nome do cliente!');
