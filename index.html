@@ -19,10 +19,14 @@
     <main class="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
         
         <!-- Cards de Resumo -->
-        <div class="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="md:col-span-3 grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
-                <p class="text-gray-500 text-sm">Faturamento Total</p>
+                <p class="text-gray-500 text-sm">Faturamento Recebido</p>
                 <h3 class="text-2xl font-bold text-gray-800" id="totalFaturamento">R$ 0,00</h3>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-500">
+                <p class="text-gray-500 text-sm">A Receber (Fiado)</p>
+                <h3 class="text-2xl font-bold text-gray-800" id="totalFiado">R$ 0,00</h3>
             </div>
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
                 <p class="text-gray-500 text-sm">Produtos Cadastrados</p>
@@ -34,7 +38,7 @@
             </div>
         </div>
 
-        <!-- Formulário de Cadastro -->
+        <!-- Formulário de Cadastro de Produto -->
         <div class="bg-white p-6 rounded-lg shadow md:col-span-1">
             <h2 class="text-lg font-bold mb-4 text-gray-700">Cadastrar Produto</h2>
             <form id="productForm" class="space-y-4">
@@ -74,7 +78,7 @@
             </div>
         </div>
 
-        <!-- Nova Seção: Histórico Detalhado de Vendas -->
+        <!-- Seção: Histórico Detalhado de Vendas -->
         <div class="bg-white p-6 rounded-lg shadow md:col-span-3">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-bold text-gray-700">Histórico Detalhado de Vendas</h2>
@@ -84,10 +88,13 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-50 border-b text-gray-600 text-sm">
-                            <th class="p-3">ID da Venda</th>
-                            <th class="p-3">Produto</th>
-                            <th class="p-3">Valor Pago</th>
-                            <th class="p-3">Data da Venda</th>
+                            <th class="p-3">ID</th>
+                            <th class="p-3">Cliente</th>
+                            <th class="p-3">Produto (Qtd)</th>
+                            <th class="p-3">Valor Total</th>
+                            <th class="p-3">Status Pagamento</th>
+                            <th class="p-3">Data</th>
+                            <th class="p-3">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="salesTableBody" class="text-sm text-gray-700">
@@ -99,17 +106,49 @@
 
     </main>
 
-    <!-- Script com Lógica, Faturamento, LocalStorage e Histórico -->
+    <!-- Modal de Venda (Aparece ao clicar em Vender) -->
+    <div id="sellModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h2 class="text-lg font-bold mb-4 text-gray-700" id="modalProdTitle">Registrar Venda</h2>
+            <form id="sellForm" class="space-y-4">
+                <input type="hidden" id="modalProdId">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600">Nome do Cliente</label>
+                    <input type="text" id="clientName" required placeholder="Ex: João da Silva" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600">Quantidade</label>
+                    <input type="number" id="sellQty" min="1" value="1" required class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600">Status do Pagamento</label>
+                    <select id="paymentStatus" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                        <option value="Pago">Pago à Vista</option>
+                        <option value="Pendente">Pendente (Fiado / Paga Depois)</option>
+                    </select>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeModal()" class="w-1/2 bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400 transition">Cancelar</button>
+                    <button type="submit" class="w-1/2 bg-green-600 text-white p-2 rounded hover:bg-green-700 transition">Confirmar Venda</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script de Lógica Avançada -->
     <script>
         let products = JSON.parse(localStorage.getItem('products')) || [];
         let sales = JSON.parse(localStorage.getItem('sales')) || [];
 
-        const form = document.getElementById('productForm');
+        const productForm = document.getElementById('productForm');
+        const sellForm = document.getElementById('sellForm');
         const tableBody = document.getElementById('stockTableBody');
         const salesTableBody = document.getElementById('salesTableBody');
         const totalProdutosEl = document.getElementById('totalProdutos');
         const totalVendasEl = document.getElementById('totalVendas');
         const totalFaturamentoEl = document.getElementById('totalFaturamento');
+        const totalFiadoEl = document.getElementById('totalFiado');
+        const sellModal = document.getElementById('sellModal');
 
         function saveData() {
             localStorage.setItem('products', JSON.stringify(products));
@@ -122,8 +161,17 @@
             totalProdutosEl.textContent = products.length;
             totalVendasEl.textContent = sales.length;
 
-            const totalFaturamento = sales.reduce((acc, sale) => acc + sale.total, 0);
+            // Calcula Faturamento Recebido e Fiado Pendente
+            const totalFaturamento = sales
+                .filter(s => s.status === 'Pago')
+                .reduce((acc, sale) => acc + sale.total, 0);
+
+            const totalFiado = sales
+                .filter(s => s.status === 'Pendente')
+                .reduce((acc, sale) => acc + sale.total, 0);
+
             totalFaturamentoEl.textContent = `R$ ${totalFaturamento.toFixed(2).replace('.', ',')}`;
+            totalFiadoEl.textContent = `R$ ${totalFiado.toFixed(2).replace('.', ',')}`;
 
             if (products.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">Nenhum produto cadastrado ainda.</td></tr>`;
@@ -136,7 +184,7 @@
                         <td class="p-3">R$ ${p.price.toFixed(2).replace('.', ',')}</td>
                         <td class="p-3 ${p.qty === 0 ? 'text-red-500 font-bold' : ''}">${p.qty} un</td>
                         <td class="p-3 flex gap-2">
-                            <button onclick="sellProduct(${p.id})" class="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition ${p.qty === 0 ? 'opacity-50 cursor-not-allowed' : ''}">Vender</button>
+                            <button onclick="openSellModal(${p.id})" class="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition ${p.qty === 0 ? 'opacity-50 cursor-not-allowed' : ''}">Vender</button>
                             <button onclick="deleteProduct(${p.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition">Excluir</button>
                         </td>
                     `;
@@ -147,24 +195,34 @@
             // Atualiza Histórico de Vendas
             salesTableBody.innerHTML = '';
             if (sales.length === 0) {
-                salesTableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">Nenhuma venda registrada ainda.</td></tr>`;
+                salesTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">Nenhuma venda registrada ainda.</td></tr>`;
             } else {
-                // Mostra as vendas da mais recente para a mais antiga (.slice().reverse())
                 sales.slice().reverse().forEach((s, index) => {
+                    const realIndex = sales.length - 1 - index;
                     const row = document.createElement('tr');
                     row.className = "border-b hover:bg-gray-50";
                     row.innerHTML = `
                         <td class="p-3 text-gray-500 text-xs">#${sales.length - index}</td>
-                        <td class="p-3 font-medium">${s.name}</td>
-                        <td class="p-3 text-green-600 font-semibold">R$ ${s.total.toFixed(2).replace('.', ',')}</td>
-                        <td class="p-3 text-gray-500">${s.date}</td>
+                        <td class="p-3 font-medium">${s.client}</td>
+                        <td class="p-3">${s.name} (${s.qty}x)</td>
+                        <td class="p-3 font-semibold text-gray-800">R$ ${s.total.toFixed(2).replace('.', ',')}</td>
+                        <td class="p-3">
+                            <span class="px-2 py-1 rounded text-xs font-bold ${s.status === 'Pago' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}">
+                                ${s.status}
+                            </span>
+                        </td>
+                        <td class="p-3 text-gray-500 text-xs">${s.date}</td>
+                        <td class="p-3">
+                            ${s.status === 'Pendente' ? `<button onclick="markAsPaid(${realIndex})" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600">Receber</button>` : '<span class="text-xs text-gray-400">Quitado</span>'}
+                        </td>
                     `;
                     salesTableBody.appendChild(row);
                 });
             }
         }
 
-        form.addEventListener('submit', (e) => {
+        // Cadastro de Produto
+        productForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const name = document.getElementById('prodName').value;
             const price = parseFloat(document.getElementById('prodPrice').value);
@@ -173,34 +231,79 @@
             products.push({ id: Date.now(), name, price, qty });
             saveData();
             updateUI();
-            form.reset();
+            productForm.reset();
         });
 
-        function sellProduct(id) {
+        // Abrir Modal de Venda
+        function openSellModal(id) {
             const product = products.find(p => p.id === id);
-            if (product && product.qty > 0) {
-                product.qty -= 1;
-                sales.push({
-                    productId: product.id,
-                    name: product.name,
-                    total: product.price,
-                    date: new Date().toLocaleString('pt-BR')
-                });
-                saveData();
-                updateUI();
-            } else {
+            if (product.qty <= 0) {
                 alert('Estoque esgotado!');
+                return;
             }
+            document.getElementById('modalProdId').value = product.id;
+            document.getElementById('modalProdTitle').textContent = `Vender: ${product.name} (Estoque: ${product.qty})`;
+            document.getElementById('sellQty').max = product.qty;
+            document.getElementById('sellQty').value = 1;
+            document.getElementById('clientName').value = '';
+            sellModal.classList.remove('hidden');
         }
 
+        function closeModal() {
+            sellModal.classList.add('hidden');
+        }
+
+        // Confirmar Venda pelo Modal
+        sellForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const prodId = parseInt(document.getElementById('modalProdId').value);
+            const client = document.getElementById('clientName').value;
+            const qty = parseInt(document.getElementById('sellQty').value);
+            const status = document.getElementById('paymentStatus').value;
+
+            const product = products.find(p => p.id === prodId);
+
+            if (product.qty < qty) {
+                alert('Quantidade solicitada maior do que o estoque disponível!');
+                return;
+            }
+
+            // Baixa no estoque
+            product.qty -= qty;
+
+            // Registra a venda
+            sales.push({
+                productId: product.id,
+                name: product.name,
+                client: client,
+                qty: qty,
+                total: product.price * qty,
+                status: status,
+                date: new Date().toLocaleString('pt-BR')
+            });
+
+            saveData();
+            updateUI();
+            closeModal();
+        });
+
+        // Marcar venda pendente como paga
+        function markAsPaid(index) {
+            sales[index].status = 'Pago';
+            saveData();
+            updateUI();
+        }
+
+        // Excluir Produto
         function deleteProduct(id) {
             products = products.filter(p => p.id !== id);
             saveData();
             updateUI();
         }
 
+        // Limpar Histórico
         function clearSalesHistory() {
-            if (confirm('Deseja realmente limpar o histórico de vendas e zerar o faturamento?')) {
+            if (confirm('Deseja realmente limpar todo o histórico de vendas?')) {
                 sales = [];
                 saveData();
                 updateUI();
