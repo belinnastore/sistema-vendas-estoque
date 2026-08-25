@@ -10,9 +10,20 @@
 <body class="bg-gray-100 font-sans">
 
     <!-- Cabeçalho -->
-    <header class="bg-blue-600 text-white shadow-md py-4 px-6 flex justify-between items-center">
+    <header class="bg-blue-600 text-white shadow-md py-4 px-6 flex flex-wrap justify-between items-center gap-4">
         <h1 class="text-xl font-bold">GestãoFácil - Vendas & Estoque</h1>
-        <span class="text-sm bg-blue-700 px-3 py-1 rounded">Módulo Front-end</span>
+        <div class="flex flex-wrap gap-2">
+            <button onclick="openMultiSaleModal()" class="bg-green-500 hover:bg-green-600 text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1">
+                🛒 Nova Venda Múltipla
+            </button>
+            <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1">
+                📥 Exportar Excel
+            </button>
+            <label class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1 cursor-pointer">
+                📤 Importar Excel
+                <input type="file" id="importFile" accept=".csv" class="hidden" onchange="importFromExcel(event)">
+            </label>
+        </div>
     </header>
 
     <!-- Conteúdo Principal -->
@@ -90,7 +101,7 @@
                         <tr class="bg-gray-50 border-b text-gray-600 text-sm">
                             <th class="p-3">ID</th>
                             <th class="p-3">Cliente</th>
-                            <th class="p-3">Produto (Qtd)</th>
+                            <th class="p-3">Produtos da Compra (Qtd & Valor Unitário)</th>
                             <th class="p-3">Valor Total</th>
                             <th class="p-3">Status Pagamento</th>
                             <th class="p-3">Data</th>
@@ -106,69 +117,88 @@
 
     </main>
 
-    <!-- Modal de Venda -->
-    <div id="sellModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4">
-        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h2 class="text-lg font-bold mb-4 text-gray-700" id="modalProdTitle">Registrar Venda</h2>
-            <form id="sellForm" class="space-y-4">
-                <input type="hidden" id="modalProdId">
-                <div>
-                    <label class="block text-sm font-medium text-gray-600">Nome do Cliente</label>
-                    <input type="text" id="clientName" required placeholder="Ex: João da Silva" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+    <!-- Modal de Venda Múltipla (Carrinho) -->
+    <div id="multiSaleModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Nova Venda (Carrinho de Compras)</h2>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-600">Nome do Cliente</label>
+                <input type="text" id="multiClientName" required placeholder="Ex: Kaylane" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <!-- Adicionar item ao carrinho -->
+            <div class="bg-gray-50 p-4 rounded border mb-4 space-y-3">
+                <h3 class="font-semibold text-sm text-gray-700">Adicionar Produto ao Carrinho</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div class="sm:col-span-2">
+                        <select id="selectProduct" class="w-full p-2 border rounded text-sm bg-white">
+                            <!-- Preenchido via JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <input type="number" id="addItemQty" min="1" value="1" placeholder="Qtd" class="w-full p-2 border rounded text-sm">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-600">Quantidade</label>
-                    <input type="number" id="sellQty" min="1" value="1" required class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                <button type="button" onclick="addItemToCart()" class="w-full bg-blue-500 text-white py-2 rounded text-sm hover:bg-blue-600 transition">Adicionar à Lista da Compra</button>
+            </div>
+
+            <!-- Tabela do Carrinho Atual -->
+            <div class="mb-4">
+                <h3 class="font-semibold text-sm text-gray-700 mb-2">Itens Selecionados para esta Compra:</h3>
+                <div class="overflow-x-auto border rounded">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-100 border-b text-gray-600">
+                            <tr>
+                                <th class="p-2">Produto</th>
+                                <th class="p-2">Qtd</th>
+                                <th class="p-2">Unitário</th>
+                                <th class="p-2">Subtotal</th>
+                                <th class="p-2">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cartTableBody">
+                            <tr><td colspan="5" class="p-3 text-center text-gray-400">Nenhum produto adicionado ainda.</td></tr>
+                        </tbody>
+                    </table>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-600">Status do Pagamento</label>
-                    <select id="paymentStatus" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
-                        <option value="Pago">Pago à Vista</option>
-                        <option value="Pendente">Pendente (Fiado / Paga Depois)</option>
-                    </select>
+                <div class="text-right mt-2 font-bold text-gray-800 text-lg">
+                    Total da Compra: <span id="cartTotalDisplay">R$ 0,00</span>
                 </div>
-                <div class="flex gap-2 pt-2">
-                    <button type="button" onclick="closeModal('sellModal')" class="w-1/2 bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400 transition">Cancelar</button>
-                    <button type="submit" class="w-1/2 bg-green-600 text-white p-2 rounded hover:bg-green-700 transition">Confirmar Venda</button>
-                </div>
-            </form>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-600">Status do Pagamento</label>
+                <select id="multiPaymentStatus" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                    <option value="Pago">Pago à Vista</option>
+                    <option value="Pendente">Pendente (Fiado / Paga Depois)</option>
+                </select>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button type="button" onclick="closeMultiSaleModal()" class="w-1/2 bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400 transition">Cancelar</button>
+                <button type="button" onclick="finalizeMultiSale()" class="w-1/2 bg-green-600 text-white p-2 rounded hover:bg-green-700 transition font-bold">Finalizar Venda</button>
+            </div>
         </div>
     </div>
 
-    <!-- Modal de Reposição de Estoque (Entrada) -->
-    <div id="restockModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4">
-        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h2 class="text-lg font-bold mb-4 text-gray-700" id="restockProdTitle">Adicionar Estoque</h2>
-            <form id="restockForm" class="space-y-4">
-                <input type="hidden" id="restockProdId">
-                <div>
-                    <label class="block text-sm font-medium text-gray-600">Quantidade a Adicionar (Entrada)</label>
-                    <input type="number" id="addQty" min="1" value="1" required class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div class="flex gap-2 pt-2">
-                    <button type="button" onclick="closeModal('restockModal')" class="w-1/2 bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400 transition">Cancelar</button>
-                    <button type="submit" class="w-1/2 bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition">Adicionar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Script Completo -->
+    <!-- Script de Lógica -->
     <script>
         let products = JSON.parse(localStorage.getItem('products')) || [];
         let sales = JSON.parse(localStorage.getItem('sales')) || [];
+        let currentCart = [];
 
         const productForm = document.getElementById('productForm');
-        const sellForm = document.getElementById('sellForm');
-        const restockForm = document.getElementById('restockForm');
         const tableBody = document.getElementById('stockTableBody');
         const salesTableBody = document.getElementById('salesTableBody');
         const totalProdutosEl = document.getElementById('totalProdutos');
         const totalVendasEl = document.getElementById('totalVendas');
         const totalFaturamentoEl = document.getElementById('totalFaturamento');
         const totalFiadoEl = document.getElementById('totalFiado');
-        const sellModal = document.getElementById('sellModal');
-        const restockModal = document.getElementById('restockModal');
+        const multiSaleModal = document.getElementById('multiSaleModal');
+        const selectProduct = document.getElementById('selectProduct');
+        const cartTableBody = document.getElementById('cartTableBody');
+        const cartTotalDisplay = document.getElementById('cartTotalDisplay');
 
         function saveData() {
             localStorage.setItem('products', JSON.stringify(products));
@@ -198,7 +228,6 @@
                         <td class="p-3 ${p.qty === 0 ? 'text-red-500 font-bold' : ''}">${p.qty} un</td>
                         <td class="p-3 flex gap-2">
                             <button onclick="openRestockModal(${p.id})" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition" title="Adicionar mais unidades">+</button>
-                            <button onclick="openSellModal(${p.id})" class="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition ${p.qty === 0 ? 'opacity-50 cursor-not-allowed' : ''}">Vender</button>
                             <button onclick="deleteProduct(${p.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition">Excluir</button>
                         </td>
                     `;
@@ -212,13 +241,15 @@
             } else {
                 sales.slice().reverse().forEach((s, index) => {
                     const realIndex = sales.length - 1 - index;
+                    let itemsHtml = s.items.map(i => `${i.name} (${i.qty}x R$ ${i.price.toFixed(2).replace('.', ',')})`).join('<br>');
+
                     const row = document.createElement('tr');
                     row.className = "border-b hover:bg-gray-50";
                     row.innerHTML = `
                         <td class="p-3 text-gray-500 text-xs">#${sales.length - index}</td>
-                        <td class="p-3 font-medium">${s.client}</td>
-                        <td class="p-3">${s.name} (${s.qty}x)</td>
-                        <td class="p-3 font-semibold text-gray-800">R$ ${s.total.toFixed(2).replace('.', ',')}</td>
+                        <td class="p-3 font-bold text-gray-800">${s.client}</td>
+                        <td class="p-3 text-xs text-gray-700">${itemsHtml}</td>
+                        <td class="p-3 font-semibold text-green-700">R$ ${s.total.toFixed(2).replace('.', ',')}</td>
                         <td class="p-3">
                             <span class="px-2 py-1 rounded text-xs font-bold ${s.status === 'Pago' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}">
                                 ${s.status}
@@ -246,83 +277,218 @@
             productForm.reset();
         });
 
-        // Controle do Modal de Reposição (+)
-        function openRestockModal(id) {
-            const product = products.find(p => p.id === id);
-            document.getElementById('restockProdId').value = product.id;
-            document.getElementById('restockProdTitle').textContent = `Adicionar Estoque: ${product.name} (Atual: ${product.qty})`;
-            document.getElementById('addQty').value = 1;
-            restockModal.classList.remove('hidden');
+        // ==========================================
+        // FUNÇÕES DE EXPORTAR E IMPORTAR EXCEL (CSV)
+        // ==========================================
+        function exportToExcel() {
+            if (products.length === 0) {
+                alert('Não há produtos no estoque para exportar!');
+                return;
+            }
+
+            // Cabeçalho do arquivo CSV
+            let csvContent = "data:text/csv;charset=utf-8,Nome,Preco,Quantidade\n";
+
+            products.forEach(p => {
+                // Substitui ponto por vírgula no preço para ficar no formato PT-BR do Excel, se preferir
+                let priceStr = p.price.toFixed(2).replace('.', ',');
+                csvContent += `"${p.name}",${priceStr},${p.qty}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "estoque_produtos.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
-        restockForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const prodId = parseInt(document.getElementById('restockProdId').value);
-            const addQty = parseInt(document.getElementById('addQty').value);
+        function importFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-            const product = products.find(p => p.id === prodId);
-            if (product) {
-                product.qty += addQty; // Soma ao estoque atual
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.split('\n');
+                
+                let addedCount = 0;
+
+                // Começa do 1 para pular o cabeçalho
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+
+                    // Regex para ler considerando valores entre aspas (caso o nome tenha espaços)
+                    const row = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                    if (row && row.length >= 3) {
+                        const name = row[0].replace(/"/g, '');
+                        const price = parseFloat(row[1].replace(',', '.'));
+                        const qty = parseInt(row[2]);
+
+                        if (name && !isNaN(price) && !isNaN(qty)) {
+                            products.push({
+                                id: Date.now() + Math.random(),
+                                name: name,
+                                price: price,
+                                qty: qty
+                            });
+                            addedCount++;
+                        }
+                    }
+                }
+
                 saveData();
                 updateUI();
-                closeModal('restockModal');
-            }
-        });
+                alert(`Importação concluída! ${addedCount} produtos adicionados ao estoque.`);
+                event.target.value = ''; // Limpa o input file
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
 
-        // Controle do Modal de Venda
-        function openSellModal(id) {
-            const product = products.find(p => p.id === id);
-            if (product.qty <= 0) {
-                alert('Estoque esgotado!');
+        // Funções do Carrinho / Venda Múltipla
+        function openMultiSaleModal() {
+            if (products.length === 0) {
+                alert('Cadastre produtos no estoque antes de realizar uma venda!');
                 return;
             }
-            document.getElementById('modalProdId').value = product.id;
-            document.getElementById('modalProdTitle').textContent = `Vender: ${product.name} (Estoque: ${product.qty})`;
-            document.getElementById('sellQty').max = product.qty;
-            document.getElementById('sellQty').value = 1;
-            document.getElementById('clientName').value = '';
-            sellModal.classList.remove('hidden');
+            currentCart = [];
+            document.getElementById('multiClientName').value = '';
+            document.getElementById('addItemQty').value = 1;
+            populateSelectProducts();
+            updateCartTable();
+            multiSaleModal.classList.remove('hidden');
         }
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.add('hidden');
+        function closeMultiSaleModal() {
+            multiSaleModal.classList.add('hidden');
         }
 
-        sellForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const prodId = parseInt(document.getElementById('modalProdId').value);
-            const client = document.getElementById('clientName').value;
-            const qty = parseInt(document.getElementById('sellQty').value);
-            const status = document.getElementById('paymentStatus').value;
+        function populateSelectProducts() {
+            selectProduct.innerHTML = '';
+            products.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.name} - R$ ${p.price.toFixed(2).replace('.', ',')} (Estoque: ${p.qty})`;
+                selectProduct.appendChild(opt);
+            });
+        }
 
+        function addItemToCart() {
+            const prodId = parseInt(selectProduct.value);
+            const qtyToAdd = parseInt(document.getElementById('addItemQty').value);
             const product = products.find(p => p.id === prodId);
 
-            if (product.qty < qty) {
-                alert('Quantidade solicitada maior do que o estoque disponível!');
+            if (!product || qtyToAdd <= 0) return;
+
+            const existingItem = currentCart.find(item => item.productId === prodId);
+            const currentQtyInCart = existingItem ? existingItem.qty : 0;
+
+            if (product.qty < (currentQtyInCart + qtyToAdd)) {
+                alert(`Estoque insuficiente! Disponível: ${product.qty}`);
                 return;
             }
 
-            product.qty -= qty;
+            if (existingItem) {
+                existingItem.qty += qtyToAdd;
+            } else {
+                currentCart.push({
+                    productId: product.id,
+                    name: product.name,
+                    price: product.price,
+                    qty: qtyToAdd
+                });
+            }
+
+            updateCartTable();
+        }
+
+        function updateCartTable() {
+            cartTableBody.innerHTML = '';
+            let totalCart = 0;
+
+            if (currentCart.length === 0) {
+                cartTableBody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-400">Nenhum produto adicionado ainda.</td></tr>`;
+                cartTotalDisplay.textContent = 'R$ 0,00';
+                return;
+            }
+
+            currentCart.forEach((item, index) => {
+                const subtotal = item.price * item.qty;
+                totalCart += subtotal;
+
+                const row = document.createElement('tr');
+                row.className = "border-b";
+                row.innerHTML = `
+                    <td class="p-2 font-medium">${item.name}</td>
+                    <td class="p-2">${item.qty}x</td>
+                    <td class="p-2">R$ ${item.price.toFixed(2).replace('.', ',')}</td>
+                    <td class="p-2 font-semibold">R$ ${subtotal.toFixed(2).replace('.', ',')}</td>
+                    <td class="p-2"><button type="button" onclick="removeFromCart(${index})" class="text-red-500 hover:text-red-700 text-xs font-bold">Remover</button></td>
+                `;
+                cartTableBody.appendChild(row);
+            });
+
+            cartTotalDisplay.textContent = `R$ ${totalCart.toFixed(2).replace('.', ',')}`;
+        }
+
+        function removeFromCart(index) {
+            currentCart.splice(index, 1);
+            updateCartTable();
+        }
+
+        function finalizeMultiSale() {
+            const client = document.getElementById('multiClientName').value.trim();
+            const status = document.getElementById('multiPaymentStatus        ').value;
+
+            if (!client) {
+                alert('Por favor, informe o nome do cliente!');
+                return;
+            }
+
+            if (currentCart.length === 0) {
+                alert('Adicione pelo menos um produto ao carrinho!');
+                return;
+            }
+
+            currentCart.forEach(cartItem => {
+                const prod = products.find(p => p.id === cartItem.productId);
+                if (prod) {
+                    prod.qty -= cartItem.qty;
+                }
+            });
+
+            const totalCompra = currentCart.reduce((acc, item) => acc + (item.price * item.qty), 0);
 
             sales.push({
-                productId: product.id,
-                name: product.name,
                 client: client,
-                qty: qty,
-                total: product.price * qty,
+                items: [...currentCart],
+                total: totalCompra,
                 status: status,
                 date: new Date().toLocaleString('pt-BR')
             });
 
             saveData();
             updateUI();
-            closeModal('sellModal');
-        });
+            closeMultiSaleModal();
+            alert('Venda registrada com sucesso!');
+        }
 
         function markAsPaid(index) {
             sales[index].status = 'Pago';
             saveData();
             updateUI();
+        }
+
+        function openRestockModal(id) {
+            const product = products.find(p => p.id === id);
+            const qtdAdd = prompt(`Adicionar estoque para: ${product.name}\nQuantidade atual: ${product.qty}\n\nDigite quantas unidades quer adicionar:`);
+            if (qtdAdd && !isNaN(qtdAdd) && parseInt(qtdAdd) > 0) {
+                product.qty += parseInt(qtdAdd);
+                saveData();
+                updateUI();
+            }
         }
 
         function deleteProduct(id) {
