@@ -129,7 +129,7 @@
             </div>
         </div>
 
-        <!-- Seção: Histórico Detalhado de Vendas com Filtros e Exportação -->
+        <!-- Seção: Histórico Detalhado de Vendas com Filtros e Exportação/Importação -->
         <div class="bg-white p-6 rounded-lg shadow md:col-span-3 border border-[#f3e1e3]">
             <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
                 <h2 class="text-lg font-bold text-[#9c5863]">Histórico Detalhado de Vendas</h2>
@@ -145,6 +145,10 @@
                     <button onclick="exportSalesToExcel()" class="bg-[#a67c52] hover:bg-[#8c6743] text-white font-bold px-3 py-1.5 rounded shadow transition text-xs flex items-center gap-1">
                         📥 Exportar Vendas (Excel)
                     </button>
+                    <label class="bg-[#8c6743] hover:bg-[#735436] text-white font-bold px-3 py-1.5 rounded shadow transition text-xs flex items-center gap-1 cursor-pointer">
+                        📤 Importar Vendas (Excel)
+                        <input type="file" id="importSalesFile" accept=".csv,.xlsx" class="hidden" onchange="importSalesFromExcel(event)">
+                    </label>
                     <button onclick="clearSalesHistory()" class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-xs hover:bg-gray-300 transition">Limpar Histórico</button>
                 </div>
             </div>
@@ -562,6 +566,62 @@
                 saveData();
                 updateUI();
                 alert(`Importação concluída! ${addedCount} produtos adicionados ao estoque.`);
+                event.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function importSalesFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet);
+
+                    let addedCount = 0;
+                    json.forEach(row => {
+                        const client = row['Cliente'] || row['cliente'];
+                        const total = parseFloat(row['Valor Total'] || row['Valor total'] || row['valor total'] || 0);
+                        const status = row['Status'] || row['status'] || 'Pago';
+                        const date = row['Data'] || row['data'] || new Date().toLocaleString('pt-BR');
+                        const produtosStr = row['Produtos'] || row['produtos'] || '';
+
+                        if (client && !isNaN(total)) {
+                            // Tenta recriar itens básicos estruturados a partir do texto exportado
+                            let items = [];
+                            if (produtosStr) {
+                                items.push({
+                                    productId: Date.now(),
+                                    name: produtosStr,
+                                    cost: 0,
+                                    price: total,
+                                    qty: 1
+                                });
+                            }
+
+                            sales.push({
+                                client: client,
+                                items: items.length > 0 ? items : [{ productId: Date.now(), name: "Venda Importada", cost: 0, price: total, qty: 1 }],
+                                total: total,
+                                status: status,
+                                date: date
+                            });
+                            addedCount++;
+                        }
+                    });
+
+                    saveData();
+                    updateUI();
+                    alert(`Importação de vendas concluída! ${addedCount} vendas adicionadas ao histórico.`);
+                } catch (err) {
+                    alert('Erro ao processar a planilha de vendas. Verifique o formato.');
+                }
                 event.target.value = '';
             };
             reader.readAsArrayBuffer(file);
