@@ -3,25 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Vendas e Estoque</title>
+    <title>GestãoFácil - Rose Gold Edition</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Biblioteca SheetJS para exportação real em Excel (.xlsx) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* Cores personalizadas Rose Gold */
+        .bg-rosegold { background-color: #b76e79; }
+        .bg-rosegold-dark { background-color: #9c5863; }
+        .bg-rosegold-light { background-color: #fdf5f5; }
+        .text-rosegold { color: #b76e79; }
+        .border-rosegold { border-color: #e8c5c8; }
+        .focus-rosegold:focus { border-color: #b76e79; ring-color: #b76e79; }
+    </style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-[#fcf9f9] font-sans text-gray-800">
 
-    <!-- Cabeçalho -->
-    <header class="bg-blue-600 text-white shadow-md py-4 px-6 flex flex-wrap justify-between items-center gap-4">
-        <h1 class="text-xl font-bold">GestãoFácil - Vendas & Estoque</h1>
+    <!-- Cabeçalho Rose Gold -->
+    <header class="bg-[#9c5863] text-white shadow-md py-4 px-6 flex flex-wrap justify-between items-center gap-4">
+        <h1 class="text-xl font-bold tracking-wide">✨ GestãoFácil - Rose Gold</h1>
         <div class="flex flex-wrap gap-2">
-            <button onclick="openMultiSaleModal()" class="bg-green-500 hover:bg-green-600 text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1">
+            <button onclick="openMultiSaleModal()" class="bg-[#b76e79] hover:bg-[#8e525d] text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1">
                 🛒 Nova Venda Múltipla
             </button>
-            <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1">
+            <button onclick="exportToExcel()" class="bg-[#a67c52] hover:bg-[#8c6743] text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1">
                 📥 Exportar Estoque
             </button>
-            <label class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1 cursor-pointer">
+            <label class="bg-[#8c6743] hover:bg-[#735436] text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1 cursor-pointer">
                 📤 Importar Estoque
                 <input type="file" id="importFile" accept=".csv,.xlsx" class="hidden" onchange="importFromExcel(event)">
             </label>
@@ -33,60 +42,60 @@
         
         <!-- Cards de Resumo -->
         <div class="md:col-span-3 grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-emerald-500">
                 <p class="text-gray-500 text-sm">Faturamento Recebido</p>
                 <h3 class="text-2xl font-bold text-gray-800" id="totalFaturamento">R$ 0,00</h3>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-500">
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-amber-500">
                 <p class="text-gray-500 text-sm">A Receber (Fiado)</p>
                 <h3 class="text-2xl font-bold text-gray-800" id="totalFiado">R$ 0,00</h3>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-[#b76e79]">
                 <p class="text-gray-500 text-sm">Produtos Cadastrados</p>
                 <h3 class="text-2xl font-bold text-gray-800" id="totalProdutos">0</h3>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-orange-500">
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-[#a67c52]">
                 <p class="text-gray-500 text-sm">Vendas Realizadas</p>
                 <h3 class="text-2xl font-bold text-gray-800" id="totalVendas">0</h3>
             </div>
         </div>
 
         <!-- Formulário de Cadastro de Produto (Recolhível) -->
-        <div class="bg-white p-6 rounded-lg shadow md:col-span-1 h-fit">
-            <div class="flex justify-between items-center cursor-pointer mb-2" onclick="toggleSection('productFormContainer', 'iconProd')">
-                <h2 class="text-lg font-bold text-gray-700">Cadastrar Produto</h2>
-                <span id="iconProd" class="text-gray-500 font-bold text-lg">▼</span>
+        <div class="bg-white p-6 rounded-lg shadow md:col-span-1 h-fit border border-[#f3e1e3]">
+            <div class="flex justify-between items-center cursor-pointer mb-2 select-none" onclick="toggleSection('productFormContainer', 'iconProd')">
+                <h2 class="text-lg font-bold text-[#9c5863]">Cadastrar Produto</h2>
+                <span id="iconProd" class="text-[#b76e79] font-bold text-lg">▼</span>
             </div>
-            <div id="productFormContainer" class="hidden transition-all duration-300 pt-2 border-t">
+            <div id="productFormContainer" class="hidden transition-all duration-300 pt-2 border-t border-[#f3e1e3]">
                 <form id="productForm" class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-600">Nome do Produto</label>
-                        <input type="text" id="prodName" required class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                        <input type="text" id="prodName" required class="w-full mt-1 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#b76e79]">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600">Preço (R$)</label>
-                        <input type="number" step="0.01" id="prodPrice" required class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                        <input type="number" step="0.01" id="prodPrice" required class="w-full mt-1 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#b76e79]">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600">Quantidade Inicial</label>
-                        <input type="number" id="prodQty" required class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                        <input type="number" id="prodQty" required class="w-full mt-1 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#b76e79]">
                     </div>
-                    <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition">Salvar Produto</button>
+                    <button type="submit" class="w-full bg-[#b76e79] hover:bg-[#9c5863] text-white p-2 rounded transition font-medium">Salvar Produto</button>
                 </form>
             </div>
         </div>
 
         <!-- Tabela de Estoque (Recolhível e com Rolagem Interna) -->
-        <div class="bg-white p-6 rounded-lg shadow md:col-span-2 h-fit">
-            <div class="flex justify-between items-center cursor-pointer mb-2" onclick="toggleSection('stockTableContainer', 'iconStock')">
-                <h2 class="text-lg font-bold text-gray-700">Controle de Estoque</h2>
-                <span id="iconStock" class="text-gray-500 font-bold text-lg">▼</span>
+        <div class="bg-white p-6 rounded-lg shadow md:col-span-2 h-fit border border-[#f3e1e3]">
+            <div class="flex justify-between items-center cursor-pointer mb-2 select-none" onclick="toggleSection('stockTableContainer', 'iconStock')">
+                <h2 class="text-lg font-bold text-[#9c5863]">Controle de Estoque</h2>
+                <span id="iconStock" class="text-[#b76e79] font-bold text-lg">▼</span>
             </div>
-            <div id="stockTableContainer" class="hidden transition-all duration-300 pt-2 border-t">
+            <div id="stockTableContainer" class="hidden transition-all duration-300 pt-2 border-t border-[#f3e1e3]">
                 <div class="overflow-y-auto max-h-96">
                     <table class="w-full text-left border-collapse">
-                        <thead class="sticky top-0 bg-gray-50">
-                            <tr class="border-b text-gray-600 text-sm">
+                        <thead class="sticky top-0 bg-[#fdf5f5]">
+                            <tr class="border-b border-[#f3e1e3] text-gray-600 text-sm">
                                 <th class="p-3">Produto</th>
                                 <th class="p-3">Preço Unitário</th>
                                 <th class="p-3">Estoque</th>
@@ -102,19 +111,19 @@
         </div>
 
         <!-- Seção: Histórico Detalhado de Vendas com Filtros e Exportação -->
-        <div class="bg-white p-6 rounded-lg shadow md:col-span-3">
+        <div class="bg-white p-6 rounded-lg shadow md:col-span-3 border border-[#f3e1e3]">
             <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
-                <h2 class="text-lg font-bold text-gray-700">Histórico Detalhado de Vendas</h2>
+                <h2 class="text-lg font-bold text-[#9c5863]">Histórico Detalhado de Vendas</h2>
                 
                 <!-- Filtros e Ações de Vendas -->
                 <div class="flex flex-wrap items-center gap-2">
                     <div class="inline-flex rounded-md shadow-sm" role="group">
-                        <button type="button" onclick="setSalesFilter('Todas')" id="filterBtnTodas" class="px-3 py-1.5 text-xs font-medium rounded-l-lg bg-blue-600 text-white transition">Todas</button>
+                        <button type="button" onclick="setSalesFilter('Todas')" id="filterBtnTodas" class="px-3 py-1.5 text-xs font-medium rounded-l-lg bg-[#b76e79] text-white transition">Todas</button>
                         <button type="button" onclick="setSalesFilter('Pendente')" id="filterBtnPendente" class="px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border-t border-b border-gray-200 hover:bg-gray-100 transition">Pendentes</button>
                         <button type="button" onclick="setSalesFilter('Pago')" id="filterBtnPago" class="px-3 py-1.5 text-xs font-medium rounded-r-lg bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 transition">Pagas</button>
                     </div>
 
-                    <button onclick="exportSalesToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded shadow transition text-xs flex items-center gap-1">
+                    <button onclick="exportSalesToExcel()" class="bg-[#a67c52] hover:bg-[#8c6743] text-white font-bold px-3 py-1.5 rounded shadow transition text-xs flex items-center gap-1">
                         📥 Exportar Vendas (Excel)
                     </button>
                     <button onclick="clearSalesHistory()" class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-xs hover:bg-gray-300 transition">Limpar Histórico</button>
@@ -124,7 +133,7 @@
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr class="bg-gray-50 border-b text-gray-600 text-sm">
+                        <tr class="bg-[#fdf5f5] border-b border-[#f3e1e3] text-gray-600 text-sm">
                             <th class="p-3">ID</th>
                             <th class="p-3">Cliente</th>
                             <th class="p-3">Produtos da Compra (Qtd & Valor Unitário)</th>
@@ -146,41 +155,41 @@
     <!-- Modal de Venda Múltipla -->
     <div id="multiSaleModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4">
         <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 class="text-xl font-bold mb-4 text-gray-800" id="modalSaleTitle">Nova Venda (Carrinho de Compras)</h2>
+            <h2 class="text-xl font-bold mb-4 text-[#9c5863]" id="modalSaleTitle">Nova Venda (Carrinho de Compras)</h2>
             
             <input type="hidden" id="editSaleIndex" value="">
 
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-600">Nome do Cliente</label>
-                <input type="text" id="multiClientName" required placeholder="Ex: Zé Maria" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                <input type="text" id="multiClientName" required placeholder="Ex: Cliente Exemplo" class="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#b76e79]">
             </div>
 
-            <div class="bg-gray-50 p-4 rounded border mb-4 space-y-3">
-                <h3 class="font-semibold text-sm text-gray-700">Adicionar Produto ao Carrinho</h3>
+            <div class="bg-[#fdf5f5] p-4 rounded border border-[#f3e1e3] mb-4 space-y-3">
+                <h3 class="font-semibold text-sm text-[#9c5863]">Adicionar Produto ao Carrinho</h3>
                 
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Pesquisar Produto no Estoque</label>
-                    <input type="text" id="searchProductInput" placeholder="Digite para filtrar o produto..." oninput="filterProductsDropdown()" class="w-full p-2 border rounded text-sm bg-white focus:ring-blue-500 focus:border-blue-500">
+                    <input type="text" id="searchProductInput" placeholder="Digite para filtrar o produto..." oninput="filterProductsDropdown()" class="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:ring-2 focus:ring-[#b76e79]">
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div class="sm:col-span-2">
                         <label class="block text-xs font-medium text-gray-500 mb-1">Selecionar da Lista</label>
-                        <select id="selectProduct" class="w-full p-2 border rounded text-sm bg-white">
+                        <select id="selectProduct" class="w-full p-2 border border-gray-300 rounded text-sm bg-white">
                             <!-- Preenchido via JS -->
                         </select>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">Quantidade</label>
-                        <input type="number" id="addItemQty" min="1" value="1" placeholder="Qtd" class="w-full p-2 border rounded text-sm">
+                        <input type="number" id="addItemQty" min="1" value="1" placeholder="Qtd" class="w-full p-2 border border-gray-300 rounded text-sm">
                     </div>
                 </div>
-                <button type="button" onclick="addItemToCart()" class="w-full bg-blue-500 text-white py-2 rounded text-sm hover:bg-blue-600 transition">Adicionar à Lista da Compra</button>
+                <button type="button" onclick="addItemToCart()" class="w-full bg-[#a67c52] text-white py-2 rounded text-sm hover:bg-[#8c6743] transition">Adicionar à Lista da Compra</button>
             </div>
 
             <div class="mb-4">
                 <h3 class="font-semibold text-sm text-gray-700 mb-2">Itens Selecionados para esta Compra:</h3>
-                <div class="overflow-x-auto border rounded">
+                <div class="overflow-x-auto border border-gray-200 rounded">
                     <table class="w-full text-left text-sm">
                         <thead class="bg-gray-100 border-b text-gray-600">
                             <tr>
@@ -203,7 +212,7 @@
 
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-600">Status do Pagamento</label>
-                <select id="multiPaymentStatus" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                <select id="multiPaymentStatus" class="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#b76e79]">
                     <option value="Pago">Pago à Vista</option>
                     <option value="Pendente">Pendente (Fiado / Paga Depois)</option>
                 </select>
@@ -211,7 +220,7 @@
 
             <div class="flex gap-2 pt-2">
                 <button type="button" onclick="closeMultiSaleModal()" class="w-1/2 bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400 transition">Cancelar</button>
-                <button type="button" onclick="finalizeMultiSale()" class="w-1/2 bg-green-600 text-white p-2 rounded hover:bg-green-700 transition font-bold" id="btnSaveSale">Finalizar Venda</button>
+                <button type="button" onclick="finalizeMultiSale()" class="w-1/2 bg-[#b76e79] text-white p-2 rounded hover:bg-[#9c5863] transition font-bold" id="btnSaveSale">Finalizar Venda</button>
             </div>
         </div>
     </div>
@@ -258,7 +267,7 @@
             ['Todas', 'Pendente', 'Pago'].forEach(f => {
                 const btn = document.getElementById(`filterBtn${f}`);
                 if (f === filter) {
-                    btn.className = "px-3 py-1.5 text-xs font-medium bg-blue-600 text-white transition";
+                    btn.className = "px-3 py-1.5 text-xs font-medium bg-[#b76e79] text-white transition";
                 } else {
                     btn.className = "px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 transition";
                 }
@@ -282,14 +291,14 @@
             } else {
                 products.forEach(p => {
                     const row = document.createElement('tr');
-                    row.className = "border-b hover:bg-gray-50";
+                    row.className = "border-b border-gray-100 hover:bg-[#fdf5f5]";
                     row.innerHTML = `
                         <td class="p-3 font-medium">${p.name}</td>
                         <td class="p-3">R$ ${p.price.toFixed(2).replace('.', ',')}</td>
                         <td class="p-3 ${p.qty === 0 ? 'text-red-500 font-bold' : ''}">${p.qty} un</td>
                         <td class="p-3 flex gap-2">
-                            <button onclick="openRestockModal(${p.id})" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition">+</button>
-                            <button onclick="deleteProduct(${p.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition">Excluir</button>
+                            <button onclick="openRestockModal(${p.id})" class="bg-[#b76e79] text-white px-2 py-1 rounded text-xs hover:bg-[#9c5863] transition">+</button>
+                            <button onclick="deleteProduct(${p.id})" class="bg-red-400 text-white px-2 py-1 rounded text-xs hover:bg-red-500 transition">Excluir</button>
                         </td>
                     `;
                     tableBody.appendChild(row);
@@ -310,21 +319,21 @@
                     let itemsHtml = s.items.map(i => `${i.name} (${i.qty}x R$ ${i.price.toFixed(2).replace('.', ',')})`).join('<br>');
 
                     const row = document.createElement('tr');
-                    row.className = "border-b hover:bg-gray-50";
+                    row.className = "border-b border-gray-100 hover:bg-[#fdf5f5]";
                     row.innerHTML = `
                         <td class="p-3 text-gray-500 text-xs">#${s.originalIndex + 1}</td>
                         <td class="p-3 font-bold text-gray-800">${s.client}</td>
                         <td class="p-3 text-xs text-gray-700">${itemsHtml}</td>
-                        <td class="p-3 font-semibold text-green-700">R$ ${s.total.toFixed(2).replace('.', ',')}</td>
+                        <td class="p-3 font-semibold text-emerald-700">R$ ${s.total.toFixed(2).replace('.', ',')}</td>
                         <td class="p-3">
-                            <span class="px-2 py-1 rounded text-xs font-bold ${s.status === 'Pago' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}">
+                            <span class="px-2 py-1 rounded text-xs font-bold ${s.status === 'Pago' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}">
                                 ${s.status}
                             </span>
                         </td>
                         <td class="p-3 text-gray-500 text-xs">${s.date}</td>
                         <td class="p-3 flex gap-1 items-center">
                             <button onclick="openEditSaleModal(${s.originalIndex})" class="bg-amber-500 text-white px-2 py-1 rounded text-xs hover:bg-amber-600 transition">Editar</button>
-                            ${s.status === 'Pendente' ? `<button onclick="markAsPaid(${s.originalIndex})" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600">Receber</button>` : '<span class="text-xs text-gray-400">Quitado</span>'}
+                            ${s.status === 'Pendente' ? `<button onclick="markAsPaid(${s.originalIndex})" class="bg-[#b76e79] text-white px-2 py-1 rounded text-xs hover:bg-[#9c5863]">Receber</button>` : '<span class="text-xs text-gray-400">Quitado</span>'}
                         </td>
                     `;
                     salesTableBody.appendChild(row);
