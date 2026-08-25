@@ -6,6 +6,8 @@
     <title>Sistema de Vendas e Estoque</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Biblioteca SheetJS para exportação real em Excel (.xlsx) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="bg-gray-100 font-sans">
 
@@ -21,7 +23,7 @@
             </button>
             <label class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1 cursor-pointer">
                 📤 Importar Estoque
-                <input type="file" id="importFile" accept=".csv" class="hidden" onchange="importFromExcel(event)">
+                <input type="file" id="importFile" accept=".csv,.xlsx" class="hidden" onchange="importFromExcel(event)">
             </label>
         </div>
     </header>
@@ -103,7 +105,7 @@
                     </div>
 
                     <button onclick="exportSalesToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded shadow transition text-xs flex items-center gap-1">
-                        📥 Exportar Vendas
+                        📥 Exportar Vendas (Excel)
                     </button>
                     <button onclick="clearSalesHistory()" class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-xs hover:bg-gray-300 transition">Limpar Histórico</button>
                 </div>
@@ -325,40 +327,42 @@
                 alert('Não há produtos no estoque para exportar!');
                 return;
             }
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFFNome;Preco;Quantidade\n";
-            products.forEach(p => {
-                let priceStr = p.price.toFixed(2).replace('.', ',');
-                csvContent += `"${p.name}";${priceStr};${p.qty}\n`;
-            });
-            downloadCSV(csvContent, "estoque_produtos.csv");
+            let dataToExport = products.map(p => ({
+                "Nome": p.name,
+                "Preço": p.price,
+                "Quantidade": p.qty
+            }));
+            let worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            let workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Estoque");
+            XLSX.writeFile(workbook, "estoque_produtos.xlsx");
         }
 
-        // Função corrigida para separar as colunas corretamente no Excel com ponto e vírgula (;)
+        // Exportação profissional usando biblioteca real do Excel
         function exportSalesToExcel() {
             if (sales.length === 0) {
                 alert('Não há vendas registradas para exportar!');
                 return;
             }
-            // \uFEFF adiciona o formato UTF-8 para aceitar acentos corretamente no Excel
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFFID;Cliente;Produtos;Valor Total;Status;Data\n";
 
-            sales.forEach((s, index) => {
-                let itensDesc = s.items.map(i => `${i.qty}x ${i.name} (R$ ${i.price.toFixed(2).replace('.', ',')})`).join(' | ');
-                let totalStr = s.total.toFixed(2).replace('.', ',');
-                csvContent += `"#${index + 1}";"${s.client}";"${itensDesc}";"${totalStr}";"${s.status}";"${s.date}"\n`;
+            // Prepara os dados para o Excel
+            let dataToExport = sales.map((s, index) => {
+                let itensDesc = s.items.map(i => `${i.qty}x ${i.name} (R$ ${i.price.toFixed(2)})`).join(' | ');
+                return {
+                    "ID": `#${index + 1}`,
+                    "Cliente": s.client,
+                    "Produtos": itensDesc,
+                    "Valor Total": s.total,
+                    "Status": s.status,
+                    "Data": s.date
+                };
             });
 
-            downloadCSV(csvContent, "historico_vendas.csv");
-        }
-
-        function downloadCSV(content, filename) {
-            const encodedUri = encodeURI(content);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", filename);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            // Cria a planilha e faz o download automático como arquivo .xlsx real
+            let worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            let workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Histórico de Vendas");
+            XLSX.writeFile(workbook, "historico_vendas.xlsx");
         }
 
         function importFromExcel(event) {
@@ -367,41 +371,35 @@
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                const text = e.target.result;
-                const lines = text.split('\n');
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet);
+
                 let addedCount = 0;
+                json.forEach(row => {
+                    const name = row['Nome'] || row['nome'];
+                    const price = parseFloat(row['Preço'] || row['Preco'] || row['preco']);
+                    const qty = parseInt(row['Quantidade'] || row['quantidade'] || row['Qtd']);
 
-                for (let i = 1; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (!line) continue;
-
-                    // Suporta separador por vírgula ou ponto e vírgula
-                    const separator = line.includes(';') ? ';' : ',';
-                    const row = line.split(separator);
-                    
-                    if (row && row.length >= 3) {
-                        const name = row[0].replace(/"/g, '').trim();
-                        const price = parseFloat(row[1].replace(/"/g, '').replace(',', '.').trim());
-                        const qty = parseInt(row[2].replace(/"/g, '').trim());
-
-                        if (name && !isNaN(price) && !isNaN(qty)) {
-                            products.push({
-                                id: Date.now() + Math.random(),
-                                name: name,
-                                price: price,
-                                qty: qty
-                            });
-                            addedCount++;
-                        }
+                    if (name && !isNaN(price) && !isNaN(qty)) {
+                        products.push({
+                            id: Date.now() + Math.random(),
+                            name: name,
+                            price: price,
+                            qty: qty
+                        });
+                        addedCount++;
                     }
-                }
+                });
 
                 saveData();
                 updateUI();
                 alert(`Importação concluída! ${addedCount} produtos adicionados ao estoque.`);
                 event.target.value = '';
             };
-            reader.readAsText(file, 'UTF-8');
+            reader.readAsArrayBuffer(file);
         }
 
         function openMultiSaleModal() {
@@ -605,7 +603,7 @@
                     date: oldSale.date
                 };
 
-                alert('Venda atualizada com sucesso!');
+                `Venda atualizada com sucesso!`;
             }
 
             saveData();
@@ -620,10 +618,11 @@
         }
 
         function openRestockModal(id) {
-            const product = products.find(p => p.id === id);
-            const qtdAdd = prompt(`Adicionar estoque para: ${product.name}\nQuantidade atual: ${product.qty}\n\nDigite quantas unidades quer adicionar:`);
+            const product = products.id === id;
+            const productObj = products.find(p => p.id === id);
+            const qtdAdd = prompt(`Adicionar estoque para: ${productObj.name}\nQuantidade atual: ${productObj.qty}\n\nDigite quantas unidades quer adicionar:`);
             if (qtdAdd && !isNaN(qtdAdd) && parseInt(qtdAdd) > 0) {
-                product.qty += parseInt(qtdAdd);
+                productObj.qty += parseInt(qtdAdd);
                 saveData();
                 updateUI();
             }
