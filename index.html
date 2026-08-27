@@ -312,7 +312,7 @@
             let totalLucro = 0;
             sales.forEach(sale => {
                 sale.items.forEach(item => {
-                    let prodObj = products.find(p => p.id === item.productId);
+                    let prodObj = products.find(p => p.id == item.productId);
                     let custoUnit = prodObj && prodObj.cost !== undefined ? prodObj.cost : (item.cost !== undefined ? item.cost : 0);
                     let lucroItem = (item.price - custoUnit) * item.qty;
                     totalLucro += lucroItem;
@@ -340,9 +340,9 @@
                         </td>
                         <td class="p-3 ${p.qty === 0 ? 'text-red-500 font-bold' : ''}">${p.qty} un</td>
                         <td class="p-3 flex gap-1 items-center">
-                            <button onclick="updateInlineProduct(${p.id})" class="bg-indigo-600 text-white px-2 py-1 rounded text-xs hover:bg-indigo-700 transition" title="Salvar alteração">Salvar</button>
-                            <button onclick="openRestockModal(${p.id})" class="bg-[#b76e79] text-white px-2 py-1 rounded text-xs hover:bg-[#9c5863]" title="Adicionar">+</button>
-                            <button onclick="deleteProduct(${p.id})" class="bg-red-400 text-white px-2 py-1 rounded text-xs hover:bg-red-500 transition">Excluir</button>
+                            <button onclick="updateInlineProduct('${p.id}')" class="bg-indigo-600 text-white px-2 py-1 rounded text-xs hover:bg-indigo-700 transition" title="Salvar alteração">Salvar</button>
+                            <button onclick="openRestockModal('${p.id}')" class="bg-[#b76e79] text-white px-2 py-1 rounded text-xs hover:bg-[#9c5863]" title="Adicionar">+</button>
+                            <button onclick="deleteProduct('${p.id}')" class="bg-red-400 text-white px-2 py-1 rounded text-xs hover:bg-red-500 transition">Excluir</button>
                         </td>
                     `;
                     tableBody.appendChild(row);
@@ -363,7 +363,7 @@
                     let itemsHtml = s.items.map(i => `${i.name} (${i.qty}x R$ ${i.price.toFixed(2).replace('.', ',')})`).join('<br>');
 
                     let saleLucro = s.items.reduce((acc, item) => {
-                        let prodObj = products.find(p => p.id === item.productId);
+                        let prodObj = products.find(p => p.id == item.productId);
                         let c = prodObj && prodObj.cost !== undefined ? prodObj.cost : (item.cost !== undefined ? item.cost : 0);
                         return acc + ((item.price - c) * item.qty);
                     }, 0);
@@ -435,7 +435,7 @@
             const price = parseFloat(document.getElementById('prodPrice').value);
             const qty = parseInt(document.getElementById('prodQty').value);
 
-            products.push({ id: Date.now(), name, cost, price, qty });
+            products.push({ id: 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5), name, cost, price, qty });
             saveData();
             updateUI();
             productForm.reset();
@@ -452,7 +452,7 @@
                 return;
             }
 
-            const product = products.find(p => p.id === id);
+            const product = products.find(p => p.id == id);
             if (product) {
                 product.cost = newCost;
                 product.price = newPrice;
@@ -506,7 +506,7 @@
             let dataToExport = sales.map((s, index) => {
                 let itensDesc = s.items.map(i => `${i.qty}x ${i.name} (Venda: R$ ${i.price.toFixed(2)})`).join(' | ');
                 let saleLucro = s.items.reduce((acc, item) => {
-                    let prodObj = products.find(p => p.id === item.productId);
+                    let prodObj = products.find(p => p.id == item.productId);
                     let c = prodObj && prodObj.cost !== undefined ? prodObj.cost : (item.cost || 0);
                     return acc + ((item.price - c) * item.qty);
                 }, 0);
@@ -527,7 +527,18 @@
             XLSX.writeFile(workbook, "historico_vendas.xlsx");
         }
 
-        // Importação de estoque corrigida para ler TODAS as linhas sem limite ou corte
+        // Função auxiliar para normalizar preços caso venham multiplicados por 100 do Excel
+        function sanitizePrice(val) {
+            let num = parseFloat(val);
+            if (isNaN(num)) return 0;
+            // Se o preço veio acima de 1000 em um produto comum, provavelmente o excel interpretou sem vírgula (ex: 2399 em vez de 23.99)
+            if (num > 500) {
+                num = num / 100;
+            }
+            return Number(num.toFixed(2));
+        }
+
+        // Importação de estoque corrigida com normalização de valores
         function importFromExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -539,22 +550,23 @@
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
                 
-                // Força ler o range completo garantindo que nenhuma linha seja ignorada
                 const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
+                products = []; // Limpa e substitui pelo arquivo atualizado
                 let addedCount = 0;
+
                 json.forEach(row => {
                     const name = row['Nome'] || row['nome'] || row['NOME'];
-                    const cost = parseFloat(row['Preço de Custo'] || row['Preco de Custo'] || row['custo'] || 0);
-                    const price = parseFloat(row['Preço de Venda'] || row['Preço'] || row['Preco'] || row['preco'] || 0);
+                    const costRaw = row['Preço de Custo'] || row['Preco de Custo'] || row['custo'] || 0;
+                    const priceRaw = row['Preço de Venda'] || row['Preço'] || row['Preco'] || row['preco'] || 0;
                     const qty = parseInt(row['Quantidade'] || row['quantidade'] || row['Qtd'] || 0);
 
                     if (name && name.toString().trim() !== "") {
                         products.push({
-                            id: Date.now() + Math.random(),
+                            id: 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                             name: name.toString().trim(),
-                            cost: isNaN(cost) ? 0 : cost,
-                            price: isNaN(price) ? 0 : price,
+                            cost: sanitizePrice(costRaw),
+                            price: sanitizePrice(priceRaw),
                             qty: isNaN(qty) ? 0 : qty
                         });
                         addedCount++;
@@ -563,13 +575,13 @@
 
                 saveData();
                 updateUI();
-                alert(`Importação concluída! ${addedCount} produtos carregados sem restrições.`);
+                alert(`Importação concluída! ${addedCount} produtos carregados corretamente.`);
                 event.target.value = '';
             };
             reader.readAsArrayBuffer(file);
         }
 
-        // Importação de vendas corrigida para ler TODAS as linhas sem limite ou corte
+        // Importação de vendas corrigida
         function importSalesFromExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -581,19 +593,22 @@
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
                 
-                // Força ler o range completo garantindo que nenhuma linha seja ignorada
                 const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
+                sales = []; // Limpa e substitui pelo arquivo atualizado
                 let addedCount = 0;
+
                 json.forEach(row => {
                     const client = row['Cliente'] || row['cliente'] || row['CLIENTE'];
                     const produtosStr = row['Produtos'] || row['produtos'] || '';
-                    const total = parseFloat(row['Valor Total'] || row['Valor Total (R$)'] || row['total'] || 0);
+                    const totalRaw = row['Valor Total'] || row['Valor Total (R$)'] || row['total'] || 0;
                     const status = row['Status'] || row['status'] || 'Pago';
                     const date = row['Data'] || row['data'] || new Date().toLocaleString('pt-BR');
 
                     if (client && client.toString().trim() !== "") {
                         let parsedItems = [];
+                        let totalCalculated = 0;
+
                         if (produtosStr) {
                             let parts = produtosStr.split('|');
                             parts.forEach(part => {
@@ -601,32 +616,29 @@
                                 if (match) {
                                     let qty = parseInt(match[1]);
                                     let name = match[2].trim();
-                                    let price = parseFloat(match[3].replace('.', '').replace(',', '.'));
+                                    let priceRaw = match[3].replace('.', '').replace(',', '.');
+                                    let price = sanitizePrice(priceRaw);
                                     
                                     let prodRef = products.find(p => p.name.toLowerCase() === name.toLowerCase());
                                     parsedItems.push({
-                                        productId: prodRef ? prodRef.id : Date.now() + Math.random(),
+                                        productId: prodRef ? prodRef.id : 'p_gen_' + Math.random(),
                                         name: name,
                                         cost: prodRef ? (prodRef.cost || 0) : 0,
-                                        price: isNaN(price) ? 0 : price,
+                                        price: price,
                                         qty: qty
                                     });
-                                } else {
-                                    parsedItems.push({
-                                        productId: Date.now() + Math.random(),
-                                        name: part.trim(),
-                                        cost: 0,
-                                        price: isNaN(total) ? 0 : total,
-                                        qty: 1
-                                    });
+                                    totalCalculated += (price * qty);
                                 }
                             });
                         }
 
+                        let totalFinal = sanitizePrice(totalRaw);
+                        if (totalFinal === 0 && totalCalculated > 0) totalFinal = totalCalculated;
+
                         sales.push({
                             client: client.toString().trim(),
-                            items: parsedItems.length > 0 ? parsedItems : [{ productId: Date.now(), name: "Diversos", cost: 0, price: isNaN(total) ? 0 : total, qty: 1 }],
-                            total: isNaN(total) ? 0 : total,
+                            items: parsedItems.length > 0 ? parsedItems : [{ productId: 'p_gen_' + Math.random(), name: "Diversos", cost: 0, price: totalFinal, qty: 1 }],
+                            total: totalFinal,
                             status: status.toString().trim(),
                             date: date.toString().trim()
                         });
@@ -706,16 +718,22 @@
         }
 
         function addItemToCart() {
-            const prodId = parseInt(selectProduct.value);
+            const prodId = selectProduct.value;
             const qtyToAdd = parseInt(document.getElementById('addItemQty').value);
-            const product = products.find(p => p.id === prodId);
-
-            if (!product || isNaN(prodId) || qtyToAdd <= 0) {
+            
+            if (!prodId || prodId === "") {
                 alert('Selecione um produto válido!');
                 return;
             }
 
-            const existingItem = currentCart.find(item => item.productId === prodId);
+            const product = products.find(p => p.id == prodId);
+
+            if (!product || isNaN(qtyToAdd) || qtyToAdd <= 0) {
+                alert('Selecione um produto válido e quantidade maior que zero!');
+                return;
+            }
+
+            const existingItem = currentCart.find(item => item.productId == prodId);
             const currentQtyInCart = existingItem ? existingItem.qty : 0;
 
             if (product.qty < (currentQtyInCart + qtyToAdd)) {
@@ -778,7 +796,7 @@
             }
 
             const item = currentCart[index];
-            const product = products.find(p => p.id === item.productId);
+            const product = products.find(p => p.id == item.productId);
 
             if (product && product.qty < qty) {
                 alert(`Estoque insuficiente! Disponível: ${product.qty}`);
@@ -814,7 +832,7 @@
 
             if (editIndex === "") {
                 currentCart.forEach(cartItem => {
-                    const prod = products.find(p => p.id === cartItem.productId);
+                    const prod = products.find(p => p.id == cartItem.productId);
                     if (prod) {
                         prod.qty -= cartItem.qty;
                     }
@@ -834,18 +852,18 @@
                 const oldSale = sales[idx];
 
                 oldSale.items.forEach(oldItem => {
-                    const prod = products.find(p => p.id === oldItem.productId);
+                    const prod = products.find(p => p.id == oldItem.productId);
                     if (prod) {
                         prod.qty += oldItem.qty;
                     }
                 });
 
                 for (let cartItem of currentCart) {
-                    const prod = products.find(p => p.id === cartItem.productId);
+                    const prod = products.find(p => p.id == cartItem.productId);
                     if (!prod || prod.qty < cartItem.qty) {
                         alert(`Estoque insuficiente para o produto: ${cartItem.name}!`);
                         oldSale.items.forEach(oldItem => {
-                            const p = products.find(x => x.id === oldItem.productId);
+                            const p = products.find(x => x.id == oldItem.productId);
                             if (p) p.qty -= oldItem.qty;
                         });
                         return;
@@ -853,7 +871,7 @@
                 }
 
                 currentCart.forEach(cartItem => {
-                    const prod = products.find(p => p.id === cartItem.productId);
+                    const prod = products.find(p => p.id == cartItem.productId);
                     if (prod) {
                         prod.qty -= cartItem.qty;
                     }
@@ -882,7 +900,7 @@
         function deleteSale(index) {
             if (confirm(`Deseja realmente excluir a venda #${index + 1} (${sales[index].client})? Os itens voltarão para o estoque.`)) {
                 sales[index].items.forEach(item => {
-                    const prod = products.find(p => p.id === item.productId);
+                    const prod = products.find(p => p.id == item.productId);
                     if (prod) {
                         prod.qty += item.qty;
                     }
@@ -896,7 +914,7 @@
         }
 
         function openRestockModal(id) {
-            const productObj = products.find(p => p.id === id);
+            const productObj = products.find(p => p.id == id);
             const qtdAdd = prompt(`Adicionar estoque para: ${productObj.name}\nQuantidade atual: ${productObj.qty}\n\nDigite quantas unidades quer adicionar:`);
             if (qtdAdd && !isNaN(qtdAdd) && parseInt(qtdAdd) > 0) {
                 productObj.qty += parseInt(qtdAdd);
@@ -906,7 +924,7 @@
         }
 
         function deleteProduct(id) {
-            products = products.filter(p => p.id !== id);
+            products = products.filter(p => p.id != id);
             saveData();
             updateUI();
         }
@@ -916,7 +934,7 @@
                 sales = [];
                 saveData();
                 updateUI();
-           }
+            }
         }
 
         updateUI();
