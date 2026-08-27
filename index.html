@@ -18,7 +18,7 @@
 </head>
 <body class="bg-[#fcf9f9] font-sans text-gray-800">
 
-    <!-- Cabeçalho Limpo (Apenas Nova Venda no topo) -->
+    <!-- Cabeçalho Limpo -->
     <header class="bg-[#9c5863] text-white shadow-md py-4 px-6 flex flex-wrap justify-between items-center gap-4">
         <h1 class="text-xl font-bold tracking-wide">✨ Gestão - Belinna Store Beauty & Makeup</h1>
         <div class="flex flex-wrap gap-2">
@@ -62,7 +62,7 @@
             </div>
         </div>
 
-        <!-- Formulário de Cadastro de Produto (Recolhível) -->
+        <!-- Formulário de Cadastro de Produto -->
         <div class="bg-white p-6 rounded-lg shadow md:col-span-1 h-fit border border-[#f3e1e3]">
             <div class="flex justify-between items-center cursor-pointer mb-2 select-none" onclick="toggleSection('productFormContainer', 'iconProd')">
                 <h2 class="text-lg font-bold text-[#9c5863]">Cadastrar Produto</h2>
@@ -91,7 +91,7 @@
             </div>
         </div>
 
-        <!-- Tabela de Estoque com Botões de Exportar/Importar integrados -->
+        <!-- Tabela de Estoque -->
         <div class="bg-white p-6 rounded-lg shadow md:col-span-2 h-fit border border-[#f3e1e3]">
             <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
                 <div class="flex items-center gap-2 cursor-pointer select-none" onclick="toggleSection('stockTableContainer', 'iconStock')">
@@ -131,7 +131,7 @@
             </div>
         </div>
 
-        <!-- Seção: Histórico Detalhado de Vendas com Filtros e Exportação/Importação -->
+        <!-- Seção: Histórico Detalhado de Vendas -->
         <div class="bg-white p-6 rounded-lg shadow md:col-span-3 border border-[#f3e1e3]">
             <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
                 <h2 class="text-lg font-bold text-[#9c5863]">Histórico Detalhado de Vendas</h2>
@@ -360,7 +360,7 @@
                 salesTableBody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-gray-400">Nenhuma venda encontrada para este filtro.</td></tr>`;
             } else {
                 filteredSales.slice().reverse().forEach((s) => {
-                    let itemsHtml = s.items.map(i => `${i.name} (${i.qty}x R$ ${i.price.toFixed(2).replace('.', ',')})`).join('<br>');
+                    let itemsHtml = s.items.map(i => `${i.qty}x ${i.name} (R$ ${i.price.toFixed(2).replace('.', ',')})`).join('<br>');
 
                     let saleLucro = s.items.reduce((acc, item) => {
                         let prodObj = products.find(p => p.id == item.productId);
@@ -505,17 +505,11 @@
 
             let dataToExport = sales.map((s, index) => {
                 let itensDesc = s.items.map(i => `${i.qty}x ${i.name} (Venda: R$ ${i.price.toFixed(2)})`).join(' | ');
-                let saleLucro = s.items.reduce((acc, item) => {
-                    let prodObj = products.find(p => p.id == item.productId);
-                    let c = prodObj && prodObj.cost !== undefined ? prodObj.cost : (item.cost || 0);
-                    return acc + ((item.price - c) * item.qty);
-                }, 0);
                 return {
                     "ID": `#${index + 1}`,
                     "Cliente": s.client,
                     "Produtos": itensDesc,
                     "Valor Total": s.total,
-                    "Lucro Líquido": saleLucro,
                     "Status": s.status,
                     "Data": s.date
                 };
@@ -527,18 +521,31 @@
             XLSX.writeFile(workbook, "historico_vendas.xlsx");
         }
 
-        // Função auxiliar para normalizar preços caso venham multiplicados por 100 do Excel
         function sanitizePrice(val) {
             let num = parseFloat(val);
             if (isNaN(num)) return 0;
-            // Se o preço veio acima de 1000 em um produto comum, provavelmente o excel interpretou sem vírgula (ex: 2399 em vez de 23.99)
-            if (num > 500) {
+            if (num > 50000) {
                 num = num / 100;
             }
             return Number(num.toFixed(2));
         }
 
-        // Importação de estoque corrigida com normalização de valores
+        // Função robusta para limpar valor de preço proveniente de strings formatadas em Excel
+        function parsePriceString(priceStr) {
+            if (!priceStr) return 0;
+            let clean = priceStr.toString().trim().replace('R$', '').trim();
+            // Substitui vírgula por ponto para conversão correta (ex: 4,99 -> 4.99)
+            if (clean.includes(',') && clean.includes('.')) {
+                // Formato 1.234,56
+                clean = clean.replace(/\./g, '').replace(',', '.');
+            } else if (clean.includes(',')) {
+                // Formato 4,99
+                clean = clean.replace(',', '.');
+            }
+            let val = parseFloat(clean);
+            return isNaN(val) ? 0 : Number(val.toFixed(2));
+        }
+
         function importFromExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -552,7 +559,7 @@
                 
                 const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-                products = []; // Limpa e substitui pelo arquivo atualizado
+                products = [];
                 let addedCount = 0;
 
                 json.forEach(row => {
@@ -581,7 +588,6 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // Importação de vendas corrigida
         function importSalesFromExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -595,7 +601,7 @@
                 
                 const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-                sales = []; // Limpa e substitui pelo arquivo atualizado
+                sales = [];
                 let addedCount = 0;
 
                 json.forEach(row => {
@@ -612,12 +618,12 @@
                         if (produtosStr) {
                             let parts = produtosStr.split('|');
                             parts.forEach(part => {
+                                // Regex ajustada para capturar corretamente qualquer formato de preço (ex: 4.99 ou 4,99)
                                 let match = part.trim().match(/^(\d+)x\s+(.*?)\s+\(Venda:\s+R\$\s*([\d.,]+)\)$/i);
                                 if (match) {
                                     let qty = parseInt(match[1]);
                                     let name = match[2].trim();
-                                    let priceRaw = match[3].replace('.', '').replace(',', '.');
-                                    let price = sanitizePrice(priceRaw);
+                                    let price = parsePriceString(match[3]);
                                     
                                     let prodRef = products.find(p => p.name.toLowerCase() === name.toLowerCase());
                                     parsedItems.push({
