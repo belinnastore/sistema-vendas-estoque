@@ -27,7 +27,7 @@
                 📊 Início / Gestão
             </button>
             <button onclick="switchSystemTab('withdrawals')" id="navBtnWithdrawals" class="bg-[#b76e79] hover:bg-[#8e525d] text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1">
-                💰 Retirada de Lucros
+                💰 Retiradas & Caixa
             </button>
             <button onclick="openMultiSaleModal()" class="bg-[#b76e79] hover:bg-[#8e525d] text-white font-bold px-3 py-2 rounded shadow transition text-sm flex items-center gap-1">
                 🛒 Nova Venda
@@ -56,7 +56,7 @@
                 <h3 class="text-xl font-bold text-gray-800" id="totalFiado">R$ 0,00</h3>
             </div>
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-indigo-500">
-                <p class="text-gray-500 text-xs">Lucro Líquido Total</p>
+                <p class="text-gray-500 text-xs">Lucro Líquido (Seu)</p>
                 <h3 class="text-xl font-bold text-indigo-600" id="totalLucro">R$ 0,00</h3>
             </div>
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-[#b76e79]">
@@ -69,14 +69,14 @@
             </div>
         </div>
 
-        <!-- Atalho Rápido para a Tela de Lucros -->
+        <!-- Atalho Rápido para a Tela de Retiradas e Caixa -->
         <div class="md:col-span-3 bg-gradient-to-r from-[#9c5863] to-[#b76e79] p-6 rounded-lg shadow text-white flex flex-wrap justify-between items-center gap-4">
             <div>
-                <h2 class="text-xl font-bold">✨ Controle de Retirada de Lucros</h2>
-                <p class="text-sm text-pink-100 mt-1">Quer retirar o seu lucro ou o lucro da loja com total segurança? Acesse a área dedicada para gerenciar saques, conferir saldos anteriores e o que restou.</p>
+                <h2 class="text-xl font-bold">✨ Painel de Retiradas & Caixa (Reposição)</h2>
+                <p class="text-sm text-pink-100 mt-1">Gerencie saques do seu lucro pessoal e o dinheiro reservado para recomprar produtos dos fornecedores.</p>
             </div>
             <button onclick="switchSystemTab('withdrawals')" class="bg-white text-[#9c5863] hover:bg-pink-50 font-bold px-6 py-3 rounded-lg shadow transition text-sm">
-                Ir para Retirada de Lucros ➔
+                Acessar Retiradas & Caixa ➔
             </button>
         </div>
 
@@ -194,40 +194,40 @@
         </div>
     </main>
 
-    <!-- CONTEÚDO DA TELA 2: RETIRADA DE LUCROS (SEPARADA) -->
+    <!-- CONTEÚDO DA TELA 2: RETIRADAS & CAIXA (REPOSIÇÃO) -->
     <main id="tabWithdrawals" class="max-w-4xl mx-auto p-6 hidden space-y-6">
         <div class="bg-white p-6 rounded-lg shadow border border-[#f3e1e3]">
             <div class="flex justify-between items-center mb-6">
                 <div>
-                    <h2 class="text-xl font-bold text-[#9c5863]">💰 Painel de Retirada de Lucros</h2>
-                    <p class="text-sm text-gray-500">Gerencie e registre saques do lucro pessoal ou da loja com controle total.</p>
+                    <h2 class="text-xl font-bold text-[#9c5863]">💰 Painel de Retiradas & Caixa (Reposição)</h2>
+                    <p class="text-sm text-gray-500">Gerencie saques do seu lucro pessoal e o dinheiro reservado para recomprar produtos da loja.</p>
                 </div>
                 <button onclick="switchSystemTab('dashboard')" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-bold px-4 py-2 rounded transition">
                     ← Voltar ao Início
                 </button>
             </div>
 
-            <!-- Cards de Saldo Disponível para Saque -->
+            <!-- Cards de Saldo Disponível -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div class="bg-[#fdf5f5] p-5 rounded-lg border border-[#e8c5c8]">
-                    <p class="text-sm text-gray-600">Lucro Total Acumulado (Disponível)</p>
+                    <p class="text-sm text-gray-600">Seu Lucro Líquido (Disponível para Saque)</p>
                     <h3 class="text-2xl font-bold text-[#9c5863] mt-1" id="availableProfitDisplay">R$ 0,00</h3>
                 </div>
-                <div class="bg-indigo-50 p-5 rounded-lg border border-indigo-100">
-                    <p class="text-sm text-gray-600">Total Já Retirado (Saques Anteriores)</p>
-                    <h3 class="text-2xl font-bold text-indigo-700 mt-1" id="totalWithdrawnDisplay">R$ 0,00</h3>
+                <div class="bg-emerald-50 p-5 rounded-lg border border-emerald-100">
+                    <p class="text-sm text-gray-600">Caixa para Reposição (Custo dos Produtos)</p>
+                    <h3 class="text-2xl font-bold text-emerald-700 mt-1" id="availableRestockDisplay">R$ 0,00</h3>
                 </div>
             </div>
 
-            <!-- Formulário para Nova Retirada -->
+            <!-- Formulário para Nova Retirada ou Uso do Caixa -->
             <form id="withdrawalForm" onsubmit="handleWithdrawal(event)" class="bg-[#fcf9f9] p-5 rounded-lg border border-[#f3e1e3] space-y-4">
-                <h3 class="font-bold text-gray-700 text-md">Realizar Nova Retirada</h3>
+                <h3 class="font-bold text-gray-700 text-md">Realizar Saque / Retirada</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-600">Tipo de Retirada</label>
+                        <label class="block text-sm font-medium text-gray-600">Tipo de Saque</label>
                         <select id="withdrawType" class="w-full mt-1 p-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-[#b76e79]">
-                            <option value="Meu Lucro (Pessoal)">Meu Lucro (Pessoal)</option>
-                            <option value="Lucro da Loja (Reinvestimento/Caixa)">Lucro da Loja</option>
+                            <option value="Meu Lucro Pessoal">Meu Lucro Pessoal</option>
+                            <option value="Retirada para Reposição de Estoque">Retirada para Reposição (Comprar Mercadoria)</option>
                         </select>
                     </div>
                     <div>
@@ -237,7 +237,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-600">Observação / Destino (Opcional)</label>
-                    <input type="text" id="withdrawNote" placeholder="Ex: Retirada para uso pessoal / Compra de embalagens" class="w-full mt-1 p-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-[#b76e79]">
+                    <input type="text" id="withdrawNote" placeholder="Ex: Saque para uso pessoal / Pedido novo de makes" class="w-full mt-1 p-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-[#b76e79]">
                 </div>
                 <button type="submit" class="w-full bg-[#b76e79] hover:bg-[#9c5863] text-white font-bold p-2.5 rounded transition">
                     Confirmar Retirada
@@ -247,7 +247,7 @@
 
         <!-- Histórico de Retiradas -->
         <div class="bg-white p-6 rounded-lg shadow border border-[#f3e1e3]">
-            <h3 class="text-lg font-bold text-[#9c5863] mb-4">Histórico de Retiradas Realizadas</h3>
+            <h3 class="text-lg font-bold text-[#9c5863] mb-4">Histórico de Saques e Retiradas</h3>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -429,6 +429,18 @@
             return totalLucro;
         }
 
+        function calculateTotalCostOfSold() {
+            let totalCusto = 0;
+            sales.filter(s => s.status === 'Pago').forEach(sale => {
+                sale.items.forEach(item => {
+                    let prodObj = products.find(p => p.id == item.productId);
+                    let custoUnit = prodObj && prodObj.cost !== undefined ? prodObj.cost : (item.cost !== undefined ? item.cost : 0);
+                    totalCusto += (custoUnit * item.qty);
+                });
+            });
+            return totalCusto;
+        }
+
         function updateUI() {
             tableBody.innerHTML = '';
             totalProdutosEl.textContent = products.length;
@@ -512,15 +524,23 @@
             }
         }
 
-        // Lógica da Tela de Retirada de Lucros
+        // Lógica da Tela de Retiradas e Caixa
         function updateWithdrawalsUI() {
             let totalLucroGerado = calculateTotalProfit();
-            let totalJaRetirado = withdrawals.reduce((acc, w) => acc + w.amount, 0);
-            let disponivel = totalLucroGerado - totalJaRetirado;
-            if (disponivel < 0) disponivel = 0;
+            let totalCustoGerado = calculateTotalCostOfSold();
 
-            document.getElementById('availableProfitDisplay').textContent = `R$ ${disponivel.toFixed(2).replace('.', ',')}`;
-            document.getElementById('totalWithdrawnDisplay').textContent = `R$ ${totalJaRetirado.toFixed(2).replace('.', ',')}`;
+            // Separa retiradas por tipo
+            let totalRetiradoLucro = withdrawals.filter(w => w.type === 'Meu Lucro Pessoal').reduce((acc, w) => acc + w.amount, 0);
+            let totalRetiradoReposisao = withdrawals.filter(w => w.type === 'Retirada para Reposição de Estoque').reduce((acc, w) => acc + w.amount, 0);
+
+            let disponivelLucro = totalLucroGerado - totalRetiradoLucro;
+            if (disponivelLucro < 0) disponivelLucro = 0;
+
+            let disponivelReposisao = totalCustoGerado - totalRetiradoReposisao;
+            if (disponivelReposisao < 0) disponivelReposisao = 0;
+
+            document.getElementById('availableProfitDisplay').textContent = `R$ ${disponivelLucro.toFixed(2).replace('.', ',')}`;
+            document.getElementById('availableRestockDisplay').textContent = `R$ ${disponivelReposisao.toFixed(2).replace('.', ',')}`;
 
             const tbody = document.getElementById('withdrawalsTableBody');
             tbody.innerHTML = '';
@@ -561,16 +581,23 @@
             }
 
             let totalLucroGerado = calculateTotalProfit();
-            let totalJaRetirado = withdrawals.reduce((acc, w) => acc + w.amount, 0);
-            let disponivel = totalLucroGerado - totalJaRetirado;
+            let totalCustoGerado = calculateTotalCostOfSold();
 
-            if (amount > disponivel) {
-                alert(`Valor indisponível! Você possui apenas R$ ${disponivel.toFixed(2).replace('.', ',')} de lucro livre para retirada.`);
+            let totalRetiradoLucro = withdrawals.filter(w => w.type === 'Meu Lucro Pessoal').reduce((acc, w) => acc + w.amount, 0);
+            let totalRetiradoReposisao = withdrawals.filter(w => w.type === 'Retirada para Reposição de Estoque').reduce((acc, w) => acc + w.amount, 0);
+
+            let disponivelLucro = totalLucroGerado - totalRetiradoLucro;
+            let disponivelReposisao = totalCustoGerado - totalRetiradoReposisao;
+
+            let disponivelAtual = (type === 'Meu Lucro Pessoal') ? disponivelLucro : disponivelReposisao;
+
+            if (amount > disponivelAtual) {
+                alert(`Valor indisponível! O saldo atual para "${type}" é de R$ ${disponivelAtual.toFixed(2).replace('.', ',')}.`);
                 return;
             }
 
-            let hadBefore = disponivel;
-            let remained = disponivel - amount;
+            let hadBefore = disponivelAtual;
+            let remained = disponivelAtual - amount;
 
             withdrawals.push({
                 type,
@@ -584,11 +611,11 @@
             saveData();
             updateWithdrawalsUI();
             document.getElementById('withdrawalForm').reset();
-            alert('Retirada realizada com sucesso!');
+            alert('Retirada registrada com sucesso!');
         }
 
         function deleteWithdrawal(index) {
-            if (confirm('Deseja realmente excluir este registro de retirada? O valor voltará para o saldo disponível.')) {
+            if (confirm('Deseja realmente excluir este registro de retirada? O valor retornará para o saldo disponível.')) {
                 withdrawals.splice(index, 1);
                 saveData();
                 updateWithdrawalsUI();
