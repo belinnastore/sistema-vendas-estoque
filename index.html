@@ -73,7 +73,7 @@
         <div class="md:col-span-3 bg-gradient-to-r from-[#9c5863] to-[#b76e79] p-6 rounded-lg shadow text-white flex flex-wrap justify-between items-center gap-4">
             <div>
                 <h2 class="text-xl font-bold">✨ Painel de Retiradas & Caixa (Reposição)</h2>
-                <p class="text-sm text-pink-100 mt-1">Gerencie saques do seu lucro pessoal e o dinheiro reservado para recomprar produtos dos fornecedores.</p>
+                <p class="text-sm text-pink-100 mt-1">Gerencie saques do seu lucro pessoal e o dinheiro reservado para recomprar produtos da loja.</p>
             </div>
             <button onclick="switchSystemTab('withdrawals')" class="bg-white text-[#9c5863] hover:bg-pink-50 font-bold px-6 py-3 rounded-lg shadow transition text-sm">
                 Acessar Retiradas & Caixa ➔
@@ -180,8 +180,9 @@
                             <th class="p-3">Cliente</th>
                             <th class="p-3">Produtos da Compra (Qtd & Valor)</th>
                             <th class="p-3">Valor Total</th>
+                            <th class="p-3">Pago / Falta</th>
                             <th class="p-3">Lucro da Venda</th>
-                            <th class="p-3">Status Pagamento</th>
+                            <th class="p-3">Status</th>
                             <th class="p-3">Data</th>
                             <th class="p-3">Ações</th>
                         </tr>
@@ -327,12 +328,19 @@
                 </div>
             </div>
 
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-600">Status do Pagamento</label>
-                <select id="multiPaymentStatus" class="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#b76e79]">
-                    <option value="Pago">Pago à Vista</option>
-                    <option value="Pendente">Pendente (Fiado / Paga Depois)</option>
-                </select>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600">Status do Pagamento</label>
+                    <select id="multiPaymentStatus" onchange="togglePaidAmountInput()" class="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#b76e79]">
+                        <option value="Pago">Pago à Vista (Total)</option>
+                        <option value="Parcial">Pago Parcial (Deixou Entrada)</option>
+                        <option value="Pendente">Pendente (Fiado Total)</option>
+                    </select>
+                </div>
+                <div id="containerPaidAmount" class="hidden">
+                    <label class="block text-sm font-medium text-gray-600">Quanto a Cliente Pagou Agora (R$)</label>
+                    <input type="number" step="0.01" id="multiPaidAmount" placeholder="Ex: 50.00" class="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#b76e79]">
+                </div>
             </div>
 
             <div class="flex gap-2 pt-2">
@@ -364,7 +372,6 @@
         const cartTableBody = document.getElementById('cartTableBody');
         const cartTotalDisplay = document.getElementById('cartTotalDisplay');
 
-        // Alternância de Telas (Abas)
         function switchSystemTab(tabName) {
             const tabDashboard = document.getElementById('tabDashboard');
             const tabWithdrawals = document.getElementById('tabWithdrawals');
@@ -431,12 +438,16 @@
 
         function calculateTotalCostOfSold() {
             let totalCusto = 0;
-            sales.filter(s => s.status === 'Pago').forEach(sale => {
-                sale.items.forEach(item => {
-                    let prodObj = products.find(p => p.id == item.productId);
-                    let custoUnit = prodObj && prodObj.cost !== undefined ? prodObj.cost : (item.cost !== undefined ? item.cost : 0);
-                    totalCusto += (custoUnit * item.qty);
-                });
+            sales.forEach(sale => {
+                let paid = sale.paidAmount !== undefined ? sale.paidAmount : (sale.status === 'Pago' ? sale.total : 0);
+                if (paid > 0 && sale.total > 0) {
+                    let proporcao = paid / sale.total;
+                    sale.items.forEach(item => {
+                        let prodObj = products.find(p => p.id == item.productId);
+                        let custoUnit = prodObj && prodObj.cost !== undefined ? prodObj.cost : (item.cost !== undefined ? item.cost : 0);
+                        totalCusto += (custoUnit * item.qty) * proporcao;
+                    });
+                }
             });
             return totalCusto;
         }
@@ -446,8 +457,20 @@
             totalProdutosEl.textContent = products.length;
             totalVendasEl.textContent = sales.length;
 
-            const totalFaturamento = sales.filter(s => s.status === 'Pago').reduce((acc, sale) => acc + sale.total, 0);
-            const totalFiado = sales.filter(s => s.status === 'Pendente').reduce((acc, sale) => acc + sale.total, 0);
+            // Faturamento Recebido soma o que efetivamente foi pago (parcial ou total)
+            const totalFaturamento = sales.reduce((acc, sale) => {
+                let paid = sale.paidAmount !== undefined ? sale.paidAmount : (sale.status === 'Pago' ? sale.total : 0);
+                return acc + paid;
+            }, 0);
+
+            // Fiado soma o restante que falta pagar
+            const totalFiado = sales.reduce((acc, sale) => {
+                let total = sale.total;
+                let paid = sale.paidAmount !== undefined ? sale.paidAmount : (sale.status === 'Pago' ? sale.total : 0);
+                let restante = total - paid;
+                return acc + (restante > 0 ? restante : 0);
+            }, 0);
+
             let totalLucro = calculateTotalProfit();
 
             totalFaturamentoEl.textContent = `R$ ${totalFaturamento.toFixed(2).replace('.', ',')}`;
@@ -483,21 +506,38 @@
             salesTableBody.innerHTML = '';
             let filteredSales = sales.map((sale, originalIndex) => ({ ...sale, originalIndex }));
             
-            if (currentSalesFilter !== 'Todas') {
-                filteredSales = filteredSales.filter(s => s.status === currentSalesFilter);
+            if (currentSalesFilter === 'Pago') {
+                filteredSales = filteredSales.filter(s => (s.paidAmount !== undefined ? s.paidAmount : (s.status === 'Pago' ? s.total : 0)) >= s.total);
+            } else if (currentSalesFilter === 'Pendente') {
+                filteredSales = filteredSales.filter(s => {
+                    let paid = s.paidAmount !== undefined ? s.paidAmount : (s.status === 'Pago' ? s.total : 0);
+                    return paid < s.total;
+                });
             }
 
             if (filteredSales.length === 0) {
-                salesTableBody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-gray-400">Nenhuma venda encontrada para este filtro.</td></tr>`;
+                salesTableBody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-gray-400">Nenhuma venda encontrada para este filtro.</td></tr>`;
             } else {
                 filteredSales.slice().reverse().forEach((s) => {
                     let itemsHtml = s.items.map(i => `${i.qty}x ${i.name} (R$ ${i.price.toFixed(2).replace('.', ',')})`).join('<br>');
+                    let paid = s.paidAmount !== undefined ? s.paidAmount : (s.status === 'Pago' ? s.total : 0);
+                    let restante = s.total - paid;
+                    if (restante < 0) restante = 0;
 
                     let saleLucro = s.items.reduce((acc, item) => {
                         let prodObj = products.find(p => p.id == item.productId);
                         let c = prodObj && prodObj.cost !== undefined ? prodObj.cost : (item.cost !== undefined ? item.cost : 0);
                         return acc + ((item.price - c) * item.qty);
                     }, 0);
+
+                    let statusBadge = '';
+                    if (paid >= s.total) {
+                        statusBadge = `<span class="px-2 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-700">Pago Total</span>`;
+                    } else if (paid > 0) {
+                        statusBadge = `<span class="px-2 py-1 rounded text-xs font-bold bg-blue-100 text-blue-700">Parcial</span>`;
+                    } else {
+                        statusBadge = `<span class="px-2 py-1 rounded text-xs font-bold bg-amber-100 text-amber-800">Pendente</span>`;
+                    }
 
                     const row = document.createElement('tr');
                     row.className = "border-b border-gray-100 hover:bg-[#fdf5f5]";
@@ -506,16 +546,16 @@
                         <td class="p-3 font-bold text-gray-800">${s.client}</td>
                         <td class="p-3 text-xs text-gray-700">${itemsHtml}</td>
                         <td class="p-3 font-semibold text-emerald-700">R$ ${s.total.toFixed(2).replace('.', ',')}</td>
-                        <td class="p-3 font-semibold text-indigo-600">R$ ${saleLucro.toFixed(2).replace('.', ',')}</td>
-                        <td class="p-3">
-                            <span class="px-2 py-1 rounded text-xs font-bold ${s.status === 'Pago' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}">
-                                ${s.status}
-                            </span>
+                        <td class="p-3 text-xs">
+                            <span class="text-emerald-600 font-semibold">Pago: R$ ${paid.toFixed(2).replace('.', ',')}</span><br>
+                            <span class="text-red-500 font-semibold">Falta: R$ ${restante.toFixed(2).replace('.', ',')}</span>
                         </td>
+                        <td class="p-3 font-semibold text-indigo-600">R$ ${saleLucro.toFixed(2).replace('.', ',')}</td>
+                        <td class="p-3">${statusBadge}</td>
                         <td class="p-3 text-gray-500 text-xs">${s.date}</td>
                         <td class="p-3 flex gap-1 items-center flex-wrap">
                             <button onclick="openEditSaleModal(${s.originalIndex})" class="bg-amber-500 text-white px-2 py-1 rounded text-xs hover:bg-amber-600 transition">Editar</button>
-                            ${s.status === 'Pendente' ? `<button onclick="markAsPaid(${s.originalIndex})" class="bg-[#b76e79] text-white px-2 py-1 rounded text-xs hover:bg-[#9c5863]">Receber</button>` : ''}
+                            ${restante > 0 ? `<button onclick="openPayPartModal(${s.originalIndex})" class="bg-emerald-600 text-white px-2 py-1 rounded text-xs hover:bg-emerald-700">Quitar / Pagar</button>` : ''}
                             <button onclick="deleteSale(${s.originalIndex})" class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition">Excluir</button>
                         </td>
                     `;
@@ -524,12 +564,20 @@
             }
         }
 
-        // Lógica da Tela de Retiradas e Caixa
+        function togglePaidAmountInput() {
+            const status = document.getElementById('multiPaymentStatus').value;
+            const container = document.getElementById('containerPaidAmount');
+            if (status === 'Parcial') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
         function updateWithdrawalsUI() {
             let totalLucroGerado = calculateTotalProfit();
             let totalCustoGerado = calculateTotalCostOfSold();
 
-            // Separa retiradas por tipo
             let totalRetiradoLucro = withdrawals.filter(w => w.type === 'Meu Lucro Pessoal').reduce((acc, w) => acc + w.amount, 0);
             let totalRetiradoReposisao = withdrawals.filter(w => w.type === 'Retirada para Reposição de Estoque').reduce((acc, w) => acc + w.amount, 0);
 
@@ -620,6 +668,32 @@
                 saveData();
                 updateWithdrawalsUI();
                 alert('Retirada excluída com sucesso!');
+            }
+        }
+
+        function openPayPartModal(index) {
+            const sale = sales[index];
+            let paid = sale.paidAmount !== undefined ? sale.paidAmount : (sale.status === 'Pago' ? sale.total : 0);
+            let restante = sale.total - paid;
+
+            const valorPagoStr = prompt(`Cliente: ${sale.client}\nValor Total: R$ ${sale.total.toFixed(2)}\nJá pago: R$ ${paid.toFixed(2)}\nFalta pagar: R$ ${restante.toFixed(2)}\n\nDigite quanto a cliente está pagando agora (R$):`, restante.toFixed(2));
+            
+            if (valorPagoStr !== null) {
+                let valorPagoAgora = parseFloat(valorPagoStr.replace(',', '.'));
+                if (isNaN(valorPagoAgora) || valorPagoAgora <= 0) {
+                    alert('Valor inválido!');
+                    return;
+                }
+
+                let novoPago = paid + valorPagoAgora;
+                if (novoPago > sale.total) novoPago = sale.total;
+
+                sale.paidAmount = novoPago;
+                sale.status = novoPago >= sale.total ? 'Pago' : 'Parcial';
+
+                saveData();
+                updateUI();
+                alert('Pagamento registrado com sucesso!');
             }
         }
 
@@ -736,11 +810,13 @@
 
             let dataToExport = sales.map((s, index) => {
                 let itensDesc = s.items.map(i => `${i.qty}x ${i.name} (Venda: R$ ${i.price.toFixed(2)})`).join(' | ');
+                let paid = s.paidAmount !== undefined ? s.paidAmount : (s.status === 'Pago' ? s.total : 0);
                 return {
                     "ID": `#${index + 1}`,
                     "Cliente": s.client,
                     "Produtos": itensDesc,
                     "Valor Total": s.total,
+                    "Valor Pago": paid,
                     "Status": s.status,
                     "Data": s.date
                 };
@@ -862,11 +938,13 @@
 
                         let totalFinal = sanitizePrice(totalRaw);
                         if (totalFinal === 0 && totalCalculated > 0) totalFinal = totalCalculated;
+                        let paidInitial = (status === 'Pago') ? totalFinal : 0;
 
                         sales.push({
                             client: client.toString().trim(),
                             items: parsedItems.length > 0 ? parsedItems : [{ productId: 'p_gen_' + Math.random(), name: "Diversos", cost: 0, price: totalFinal, qty: 1 }],
                             total: totalFinal,
+                            paidAmount: paidInitial,
                             status: status.toString().trim(),
                             date: date.toString().trim()
                         });
@@ -895,6 +973,8 @@
             searchProductInput.value = '';
             document.getElementById('addItemQty').value = 1;
             document.getElementById('multiPaymentStatus').value = 'Pago';
+            document.getElementById('multiPaidAmount').value = '';
+            document.getElementById('containerPaidAmount').classList.add('hidden');
             
             populateSelectProducts(products);
             updateCartTable();
@@ -909,7 +989,19 @@
             document.getElementById('modalSaleTitle').textContent = `Editar Venda #${index + 1} - ${sale.client}`;
             document.getElementById('btnSaveSale').textContent = 'Salvar Alterações';
             document.getElementById('multiClientName').value = sale.client;
-            document.getElementById('multiPaymentStatus').value = sale.status;
+            
+            let paid = sale.paidAmount !== undefined ? sale.paidAmount : (sale.status === 'Pago' ? sale.total : 0);
+            let stat = sale.status;
+            if (paid > 0 && paid < sale.total) stat = 'Parcial';
+
+            document.getElementById('multiPaymentStatus').value = stat;
+            document.getElementById('multiPaidAmount').value = paid > 0 ? paid : '';
+            if (stat === 'Parcial') {
+                document.getElementById('containerPaidAmount').classList.remove('hidden');
+            } else {
+                document.getElementById('containerPaidAmount').classList.add('hidden');
+            }
+
             searchProductInput.value = '';
             document.getElementById('addItemQty').value = 1;
 
@@ -1043,7 +1135,7 @@
 
         function finalizeMultiSale() {
             const client = document.getElementById('multiClientName').value.trim();
-            const status = document.getElementById('multiPaymentStatus').value;
+            const statusType = document.getElementById('multiPaymentStatus').value;
             const editIndex = document.getElementById('editSaleIndex').value;
 
             if (!client) {
@@ -1057,6 +1149,24 @@
             }
 
             const totalCompra = currentCart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+            let paidAmount = 0;
+            let status = 'Pendente';
+
+            if (statusType === 'Pago') {
+                paidAmount = totalCompra;
+                status = 'Pago';
+            } else if (statusType === 'Parcial') {
+                paidAmount = parseFloat(document.getElementById('multiPaidAmount').value);
+                if (isNaN(paidAmount) || paidAmount < 0) {
+                    alert('Insira um valor válido pago na entrada!');
+                    return;
+                }
+                if (paidAmount > totalCompra) paidAmount = totalCompra;
+                status = paidAmount >= totalCompra ? 'Pago' : 'Parcial';
+            } else {
+                paidAmount = 0;
+                status = 'Pendente';
+            }
 
             if (editIndex === "") {
                 currentCart.forEach(cartItem => {
@@ -1068,6 +1178,7 @@
                     client: client,
                     items: [...currentCart],
                     total: totalCompra,
+                    paidAmount: paidAmount,
                     status: status,
                     date: new Date().toLocaleString('pt-BR')
                 });
@@ -1103,6 +1214,7 @@
                     client: client,
                     items: [...currentCart],
                     total: totalCompra,
+                    paidAmount: paidAmount,
                     status: status,
                     date: oldSale.date
                 };
@@ -1111,12 +1223,6 @@
             saveData();
             updateUI();
             closeMultiSaleModal();
-        }
-
-        function markAsPaid(index) {
-            sales[index].status = 'Pago';
-            saveData();
-            updateUI();
         }
 
         function deleteSale(index) {
