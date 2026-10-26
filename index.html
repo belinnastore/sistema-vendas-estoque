@@ -457,13 +457,11 @@
             totalProdutosEl.textContent = products.length;
             totalVendasEl.textContent = sales.length;
 
-            // Faturamento Recebido soma o que efetivamente foi pago (parcial ou total)
             const totalFaturamento = sales.reduce((acc, sale) => {
                 let paid = sale.paidAmount !== undefined ? sale.paidAmount : (sale.status === 'Pago' ? sale.total : 0);
                 return acc + paid;
             }, 0);
 
-            // Fiado soma o restante que falta pagar
             const totalFiado = sales.reduce((acc, sale) => {
                 let total = sale.total;
                 let paid = sale.paidAmount !== undefined ? sale.paidAmount : (sale.status === 'Pago' ? sale.total : 0);
@@ -1040,6 +1038,7 @@
         function addItemToCart() {
             const prodId = selectProduct.value;
             const qtyToAdd = parseInt(document.getElementById('addItemQty').value);
+            const editIndex = document.getElementById('editSaleIndex').value;
             
             if (!prodId || prodId === "") {
                 alert('Selecione um produto válido!');
@@ -1056,8 +1055,18 @@
             const existingItem = currentCart.find(item => item.productId == prodId);
             const currentQtyInCart = existingItem ? existingItem.qty : 0;
 
-            if (product.qty < (currentQtyInCart + qtyToAdd)) {
-                alert(`Estoque insuficiente! Disponível: ${product.qty}`);
+            // Calcula o estoque efetivo considerando o que já está reservado nesta venda se estiver em edição
+            let stockDisponivel = product.qty;
+            if (editIndex !== "") {
+                const originalSale = sales[editIndex];
+                const originalItem = originalSale.items.find(i => i.productId == prodId);
+                if (originalItem) {
+                    stockDisponivel += originalItem.qty;
+                }
+            }
+
+            if (stockDisponivel < (currentQtyInCart + qtyToAdd)) {
+                alert(`Estoque insuficiente! Disponível: ${stockDisponivel}`);
                 return;
             }
 
@@ -1109,6 +1118,8 @@
 
         function updateCartItemQty(index, newQty) {
             const qty = parseInt(newQty);
+            const editIndex = document.getElementById('editSaleIndex').value;
+
             if (isNaN(qty) || qty <= 0) {
                 alert('Digite uma quantidade válida maior que zero.');
                 updateCartTable();
@@ -1118,8 +1129,17 @@
             const item = currentCart[index];
             const product = products.find(p => p.id == item.productId);
 
-            if (product && product.qty < qty) {
-                alert(`Estoque insuficiente! Disponível: ${product.qty}`);
+            let stockDisponivel = product ? product.qty : 0;
+            if (editIndex !== "") {
+                const originalSale = sales[editIndex];
+                const originalItem = originalSale.items.find(i => i.productId == item.productId);
+                if (originalItem) {
+                    stockDisponivel += originalItem.qty;
+                }
+            }
+
+            if (product && stockDisponivel < qty) {
+                alert(`Estoque insuficiente! Disponível: ${stockDisponivel}`);
                 updateCartTable();
                 return;
             }
@@ -1229,7 +1249,9 @@
             if (confirm(`Deseja realmente excluir a venda #${index + 1} (${sales[index].client})? Os itens voltarão para o estoque.`)) {
                 sales[index].items.forEach(item => {
                     const prod = products.find(p => p.id == item.productId);
-                    if (prod) prod.qty += item.qty;
+                    if (prod) {
+                        prod.qty += item.qty;
+                    }
                 });
 
                 sales.splice(index, 1);
